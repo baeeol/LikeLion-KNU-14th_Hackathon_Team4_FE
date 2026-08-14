@@ -155,7 +155,7 @@ function ShortcutSection({navigate}: {navigate: Navigate}) {
         title="피부가 불편해졌어요"
         description={'AI와 상담하고 루틴을\n조정해 보세요'}
         variant="sos"
-        onPress={() => navigate('myRoutine')}
+        onPress={() => navigate('routineConsult')}
       />
     </View>
   );

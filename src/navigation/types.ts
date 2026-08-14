@@ -4,6 +4,7 @@ export type AppScreen =
   | 'home'
   | 'myRoutine'
   | 'productExplore'
-  | 'productDetail';
+  | 'productDetail'
+  | 'routineConsult';
 
 export type Navigate = (screen: AppScreen) => void;
