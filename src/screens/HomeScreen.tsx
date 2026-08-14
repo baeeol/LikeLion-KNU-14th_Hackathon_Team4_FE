@@ -48,6 +48,7 @@ export function HomeScreen({navigate}: {navigate: Navigate}) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FBFCF9" />
 
+      <View style={styles.page}>
       <ScrollView
         contentContainerStyle={styles.screen}
         showsVerticalScrollIndicator={false}>
@@ -57,9 +58,10 @@ export function HomeScreen({navigate}: {navigate: Navigate}) {
 
         <View style={styles.bottomArea}>
           <ShortcutSection navigate={navigate} />
-          <BottomNavigation navigate={navigate} />
         </View>
       </ScrollView>
+      <BottomNavigation navigate={navigate} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -309,7 +311,8 @@ function SkinIllustration() {
 
 const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FBFCF9'},
-  screen: {flexGrow: 1, paddingHorizontal: 12, paddingTop: 40, paddingBottom: 12},
+  page: {flex: 1},
+  screen: {flexGrow: 1, paddingHorizontal: 12, paddingTop: 40, paddingBottom: 18},
   topRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
   brand: {color: '#2D714A', fontSize: 17, fontWeight: '900', letterSpacing: -0.8},
   brandLeaf: {position: 'absolute', right: -12, top: -4, color: '#75A77B', fontSize: 16},
@@ -376,7 +379,7 @@ const styles = StyleSheet.create({
   shortcutTitle: {fontSize: 11, fontWeight: '800', color: '#546259'},
   shortcutText: {fontSize: 8, lineHeight: 11, color: '#8A958B', marginTop: 3},
   shortcutArrow: {position: 'absolute', right: 8, color: '#7F8C82', fontSize: 18},
-  bottomNav: {height: 62, backgroundColor: '#FFF', borderRadius: 15, marginTop: 8, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center'},
+  bottomNav: {height: 62, backgroundColor: '#FFF', borderRadius: 15, marginHorizontal: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', shadowColor: '#758075', shadowOpacity: 0.07, shadowOffset: {width: 0, height: 2}, shadowRadius: 8, elevation: 2},
   navItem: {alignItems: 'center', minWidth: 48},
   navIcon: {fontSize: 20, color: '#98A29A'},
   navLabel: {fontSize: 9, color: '#98A29A', marginTop: 2},
