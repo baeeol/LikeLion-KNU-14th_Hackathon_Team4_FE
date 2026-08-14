@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import {Navigate} from '../navigation/types';
+import {BrandLogo} from '../components/common/BrandLogo';
 
 type RoutineProduct = {
   category: string;
@@ -53,9 +54,8 @@ export function MyRoutineScreen({navigate}: {navigate: Navigate}) {
       <View style={styles.page}>
       <ScrollView contentContainerStyle={styles.screen} showsVerticalScrollIndicator={false}>
         <View style={styles.brandHeader}>
-          <View>
-            <Text style={styles.brand}>루틴밸런스</Text>
-            <Text style={styles.brandLeaf}>◜</Text>
+          <View style={styles.brandCopy}>
+            <BrandLogo />
             <Text style={styles.pageTitle}>내 루틴</Text>
             <Text style={styles.pageDescription}>현재 기준으로 추천된 루틴이에요.</Text>
           </View>
@@ -196,8 +196,9 @@ function SkinIllustration() {
 const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FFFDF9'},
   page: {flex: 1},
-  screen: {paddingHorizontal: 30, paddingTop: 29, paddingBottom: 18},
+  screen: {paddingHorizontal: 24, paddingTop: 28, paddingBottom: 18},
   brandHeader: {height: 147, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  brandCopy: {alignSelf: 'flex-start'},
   brand: {fontSize: 24, color: '#2F6848', fontWeight: '900', letterSpacing: -1.5},
   brandLeaf: {position: 'absolute', right: -17, top: -8, fontSize: 20, color: '#568A65'},
   pageTitle: {fontSize: 25, color: '#303932', fontWeight: '900', marginTop: 28, letterSpacing: -1.1},

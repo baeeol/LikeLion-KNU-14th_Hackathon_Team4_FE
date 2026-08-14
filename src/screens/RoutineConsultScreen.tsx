@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import {Navigate} from '../navigation/types';
+import {BrandLogo} from '../components/common/BrandLogo';
 
 export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
   const [message, setMessage] = useState('');
@@ -19,10 +21,14 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFDF9" />
       <View style={styles.page}>
-        <ScrollView contentContainerStyle={styles.screen} showsVerticalScrollIndicator={false}>
+        <View style={styles.screen}>
           <Header onBack={() => navigate('home')} />
           <ConsultHero />
           <IntroMessage />
+          <ScrollView
+            style={styles.chatScroll}
+            contentContainerStyle={styles.chatContent}
+            showsVerticalScrollIndicator={false}>
           <UserMessage text="요즘 피부가 따갑고 붉어졌어요." time="오전 9:41" />
           <BotMessage>
             <Text style={styles.messageText}>최근 루틴 변화와 현재 사용 제품을{`\n`}함께 확인해볼게요.</Text>
@@ -38,7 +44,8 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
           <ActionButtons accepted={proposalAccepted} onAccept={() => setProposalAccepted(true)} />
           <QuickQuestions />
           <NextCheckCard />
-        </ScrollView>
+          </ScrollView>
+        </View>
 
         <View style={styles.composer}>
           <TextInput
@@ -58,7 +65,7 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
 }
 
 function Header({onBack}: {onBack: () => void}) {
-  return <View style={styles.header}><Pressable onPress={onBack} style={styles.backButtonWrap}><Text style={styles.backButton}>{'<'}</Text></Pressable><View><Text style={styles.brand}>루틴밸런스</Text><Text style={styles.brandLeaf}>◜</Text></View><View style={styles.headerSpace}/></View>;
+  return <View style={styles.header}><TouchableOpacity accessibilityRole="button" accessibilityLabel="홈으로 돌아가기" activeOpacity={0.6} hitSlop={{top: 16, bottom: 16, left: 16, right: 16}} onPress={() => onBack()} style={styles.backButtonWrap}><Text style={styles.backButton}>‹</Text></TouchableOpacity><BrandLogo /><View style={styles.headerSpace}/></View>;
 }
 
 function ConsultHero() {
@@ -110,8 +117,8 @@ function RobotIllustration() {return <View style={styles.robotIllustration}><Tex
 function RestIllustration() {return <View style={styles.restIllustration}><View style={styles.daysCard}><Text style={styles.daysNumber}>7</Text><Text style={styles.daysLabel}>DAYS</Text></View><View style={styles.restBottleOne}/><View style={styles.restBottleTwo}/><Text style={styles.restLeaf}>❘</Text></View>;}
 
 const styles = StyleSheet.create({
-  safeArea: {flex: 1, backgroundColor: '#FFFDF9'}, page: {flex: 1}, screen: {paddingHorizontal: 26, paddingTop: 29, paddingBottom: 18},
-  header: {height: 42, flexDirection: 'row', alignItems: 'center'}, backButtonWrap: {width: 42, height: 42, alignItems: 'flex-start', justifyContent: 'center', marginRight: 10}, backButton: {fontSize: 25, color: '#374239', fontWeight: '600'}, brand: {fontSize: 17, color: '#357248', fontWeight: '900'}, brandLeaf: {position: 'absolute', right: -13, top: -8, color: '#639468', fontSize: 14}, headerSpace: {flex: 1},
+  safeArea: {flex: 1, backgroundColor: '#FFFDF9'}, page: {flex: 1}, screen: {flex: 1, paddingHorizontal: 24, paddingTop: 28}, chatScroll: {flex: 1, marginTop: 8}, chatContent: {paddingBottom: 18},
+  header: {height: 42, flexDirection: 'row', alignItems: 'flex-start'}, backButtonWrap: {width: 42, height: 42, alignItems: 'flex-start', justifyContent: 'center', marginRight: 10}, backButton: {fontSize: 37, lineHeight: 32, color: '#374239'}, brand: {fontSize: 17, color: '#357248', fontWeight: '900'}, brandLeaf: {position: 'absolute', right: -13, top: -8, color: '#639468', fontSize: 14}, headerSpace: {flex: 1},
   hero: {height: 112, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, heroTitle: {fontSize: 28, letterSpacing: -1.4, color: '#303A32', fontWeight: '900'}, heroDescription: {fontSize: 11, lineHeight: 16, color: '#717C73', marginTop: 8},
   robotIllustration: {width: 134, height: 101, position: 'relative'}, robotSparkle: {position: 'absolute', top: 0, right: 9, fontSize: 16, color: '#E7C87B'}, robotBody: {position: 'absolute', right: 34, top: 27, width: 58, height: 57, borderRadius: 19, backgroundColor: '#EDF0E4', borderWidth: 1, borderColor: '#B3BEA9', alignItems: 'center'}, robotHead: {position: 'absolute', top: -13, width: 56, height: 38, borderRadius: 19, backgroundColor: '#E5ECDD', borderWidth: 1, borderColor: '#99AA93', alignItems: 'center', justifyContent: 'center'}, robotAntenna: {position: 'absolute', top: -13, width: 1, height: 12, backgroundColor: '#578561'}, robotEyesLarge: {fontSize: 16, color: '#447D55'}, robotPlant: {position: 'absolute', right: 0, bottom: 13, color: '#A4B89B', fontSize: 18}, robotJar: {position: 'absolute', left: 22, bottom: 4, width: 32, height: 20, borderRadius: 5, backgroundColor: '#D7DDCC'}, robotBottle: {position: 'absolute', left: 10, bottom: 4, width: 13, height: 36, borderRadius: 4, backgroundColor: '#B5C2A9'},
   introMessage: {minHeight: 49, borderRadius: 15, backgroundColor: '#FFF', shadowColor: '#758075', shadowOpacity: 0.08, shadowOffset: {width: 0, height: 2}, shadowRadius: 7, elevation: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10}, introText: {fontSize: 11, lineHeight: 15, color: '#3E4B42', fontWeight: '800', marginLeft: 9},

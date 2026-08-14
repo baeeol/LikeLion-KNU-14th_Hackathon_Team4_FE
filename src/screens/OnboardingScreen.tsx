@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import {Navigate} from '../navigation/types';
+import {BrandLogo} from '../components/common/BrandLogo';
 
 const skinTypes = ['건성', '지성', '수부지', '복합성', '잘 모르겠어요'];
 const skinConcerns = ['건조', '트러블', '붉어짐', '피부결', '유분', '잡티'];
@@ -112,9 +113,8 @@ export function OnboardingScreen({navigate}: {navigate: Navigate}) {
 function BrandHeader() {
   return (
     <View style={styles.brandHeader}>
-      <View>
-        <Text style={styles.brand}>루틴밸런스</Text>
-        <Text style={styles.brandLeaf}>◜</Text>
+      <View style={styles.brandCopy}>
+        <BrandLogo />
         <Text style={styles.brandDescription}>내 화장품 루틴을 똑똑하게 관리해보세요</Text>
       </View>
       <SkinIllustration />
@@ -207,8 +207,9 @@ function SkinIllustration() {
 
 const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FFFDF9'},
-  screen: {paddingHorizontal: 29, paddingTop: 26, paddingBottom: 22},
+  screen: {paddingHorizontal: 24, paddingTop: 28, paddingBottom: 22},
   brandHeader: {height: 148, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  brandCopy: {alignSelf: 'flex-start'},
   brand: {fontSize: 26, letterSpacing: -1.6, color: '#2F6848', fontWeight: '900'},
   brandLeaf: {position: 'absolute', right: -17, top: -8, fontSize: 22, color: '#568A65'},
   brandDescription: {fontSize: 11, color: '#7F8C83', marginTop: 11},

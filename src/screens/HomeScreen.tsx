@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import {Navigate} from '../navigation/types';
+import {BrandLogo} from '../components/common/BrandLogo';
 
 type Product = {
   name: string;
@@ -43,6 +44,17 @@ const ROUTINE_STATUSES: RoutineStatus[] = [
   {icon: '◌', label: '각질', value: '부족', color: '#F6E5E0', isWarning: true},
 ];
 
+const FUNCTION_CARDS: RoutineStatus[] = [
+  {icon: '💧', label: '수분 공급', value: '충분', color: '#DAEEE0'},
+  {icon: '🛡️', label: '피부 장벽·보습', value: '보통', color: '#E5EEE2'},
+  {icon: '🌿', label: '진정·붉은 기', value: '보통', color: '#E2F1E1'},
+  {icon: '◌', label: '각질·결 관리', value: '과잉', color: '#F6E5E0', isWarning: true},
+  {icon: '⊕', label: '트러블·피지 케어', value: '부족', color: '#E6F1E4', isWarning: true},
+  {icon: '⌁', label: '모공·결 개선', value: '보통', color: '#E9F3E8'},
+  {icon: '✦', label: '잡티·톤 케어', value: '부족', color: '#EFF4E9', isWarning: true},
+  {icon: '☀', label: '자외선 차단', value: '충분', color: '#FFF0D9'},
+];
+
 export function HomeScreen({navigate}: {navigate: Navigate}) {
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -70,9 +82,8 @@ function HomeHeader() {
   return (
     <>
       <View style={styles.topRow}>
-        <View>
-          <Text style={styles.brand}>루틴밸런스</Text>
-          <Text style={styles.brandLeaf}>◜</Text>
+        <View style={styles.logoWrap}>
+          <BrandLogo />
         </View>
         <Text style={styles.notification}>♧</Text>
       </View>
@@ -84,7 +95,6 @@ function HomeHeader() {
             오늘도 피부에 가장 좋은 선택을 해주세요.
           </Text>
         </View>
-        <SkinIllustration />
       </View>
     </>
   );
@@ -112,7 +122,7 @@ function RoutineConditionCard() {
       </View>
 
       <View style={styles.functionGrid}>
-        {ROUTINE_STATUSES.map(status => (
+        {FUNCTION_CARDS.map(status => (
           <FunctionCard key={status.label} {...status} />
         ))}
       </View>
@@ -186,14 +196,12 @@ function CardHeader({title, actionLabel}: {title: string; actionLabel: string}) 
 function FunctionCard({icon, label, value, color, isWarning}: RoutineStatus) {
   return (
     <View style={styles.functionCard}>
-      <View style={[styles.functionIcon, {backgroundColor: color}]}>
+      <View style={[styles.functionIcon, {backgroundColor: color}]}> 
         <Text style={styles.functionIconText}>{icon}</Text>
       </View>
-      <View>
-        <Text style={styles.functionLabel}>{label}</Text>
-        <Text style={[styles.functionValue, isWarning && styles.functionValueWarn]}>
-          {value}
-        </Text>
+      <View style={styles.functionTextWrap}>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.functionLabel}>{label}</Text>
+        <Text style={[styles.functionValue, isWarning && styles.functionValueWarn]}>{value}</Text>
       </View>
     </View>
   );
@@ -312,14 +320,15 @@ function SkinIllustration() {
 const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FBFCF9'},
   page: {flex: 1},
-  screen: {flexGrow: 1, paddingHorizontal: 12, paddingTop: 40, paddingBottom: 18},
+  screen: {flexGrow: 1, paddingHorizontal: 12, paddingTop: 40, paddingBottom: 10},
   topRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  logoWrap: {marginLeft: 12},
   brand: {color: '#2D714A', fontSize: 17, fontWeight: '900', letterSpacing: -0.8},
   brandLeaf: {position: 'absolute', right: -12, top: -4, color: '#75A77B', fontSize: 16},
   notification: {fontSize: 22, color: '#43815B'},
-  welcomeRow: {height: 102, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-  welcome: {fontSize: 18, color: '#2D3830', fontWeight: '800', letterSpacing: -0.5},
-  welcomeSub: {fontSize: 11, color: '#929B93', marginTop: 7},
+  welcomeRow: {height: 90, justifyContent: 'center', paddingLeft: 12},
+  welcome: {fontSize: 21, color: '#2D3830', fontWeight: '800', letterSpacing: -0.7},
+  welcomeSub: {fontSize: 11, color: '#929B93', marginTop: 5},
   illustration: {width: 126, height: 82, position: 'relative'},
   sparkle: {position: 'absolute', right: 9, top: 2, color: '#F5BB61', fontSize: 17},
   plantLeft: {position: 'absolute', left: 7, top: 21, color: '#A9C3A7', fontSize: 19, transform: [{rotate: '-10deg'}]},
@@ -328,33 +337,34 @@ const styles = StyleSheet.create({
   hair: {position: 'absolute', top: -2, width: 50, height: 30, borderRadius: 28, backgroundColor: '#665D4D'},
   bottleOne: {position: 'absolute', bottom: 1, left: 42, width: 13, height: 31, borderRadius: 3, backgroundColor: '#B6C5A5'},
   bottleTwo: {position: 'absolute', bottom: 1, left: 57, width: 22, height: 19, borderRadius: 4, backgroundColor: '#E8E8DD'},
-  conditionCard: {backgroundColor: '#FFF', borderRadius: 17, padding: 18, marginTop: 11, shadowColor: '#879385', shadowOpacity: 0.09, shadowOffset: {width: 0, height: 3}, shadowRadius: 10, elevation: 2},
+  conditionCard: {backgroundColor: '#FFF', borderRadius: 18, padding: 18, marginTop: 12, shadowColor: '#879385', shadowOpacity: 0.09, shadowOffset: {width: 0, height: 3}, shadowRadius: 10, elevation: 2},
   cardHeading: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
   cardHeadingText: {fontSize: 14, fontWeight: '800', color: '#3E4A41'},
   detailLink: {fontSize: 10, color: '#78847C'},
-  scoreRow: {flexDirection: 'row', alignItems: 'center', marginTop: 15},
-  scoreCircle: {width: 83, height: 83, borderRadius: 42, borderWidth: 7, borderColor: '#377347', borderLeftColor: '#DCEADE', alignItems: 'center', justifyContent: 'center'},
-  score: {fontSize: 28, color: '#2E6C42', fontWeight: '800'},
+  scoreRow: {flexDirection: 'row', alignItems: 'center', marginTop: 14},
+  scoreCircle: {width: 84, height: 84, borderRadius: 42, borderWidth: 7, borderColor: '#377347', borderLeftColor: '#DCEADE', alignItems: 'center', justifyContent: 'center'},
+  score: {fontSize: 23, color: '#2E6C42', fontWeight: '800'},
   scoreUnit: {fontSize: 11, color: '#65816B', marginTop: -4},
   outOf: {fontSize: 12, color: '#8D9790', marginLeft: 10},
-  scoreTextWrap: {flex: 1, marginLeft: 18},
-  scoreTitle: {fontSize: 13, color: '#3D8A55', fontWeight: '800'},
-  scoreText: {fontSize: 11, lineHeight: 16, color: '#68746B', marginTop: 7},
-  functionGrid: {flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#EDF0EC', marginTop: 16, paddingTop: 14},
-  functionCard: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5, borderRightWidth: 1, borderRightColor: '#EEF1ED', paddingLeft: 5},
-  functionIcon: {width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center'},
+  scoreTextWrap: {flex: 1, marginLeft: 13},
+  scoreTitle: {fontSize: 12, color: '#3D8A55', fontWeight: '800'},
+  scoreText: {fontSize: 10, lineHeight: 14, color: '#68746B', marginTop: 4},
+  functionGrid: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 9, marginTop: 15, paddingTop: 13, borderTopWidth: 1, borderTopColor: '#EDF0EC'},
+  functionCard: {width: '24%', minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: '#EDF0EC', borderRadius: 9, paddingHorizontal: 5, paddingVertical: 5, overflow: 'hidden'},
+  functionIcon: {width: 21, height: 21, borderRadius: 11, alignItems: 'center', justifyContent: 'center'},
   functionIconText: {fontSize: 12, color: '#5B8764'},
-  functionLabel: {fontSize: 9, color: '#758177'},
-  functionValue: {fontSize: 9, color: '#498159', fontWeight: '800', marginTop: 2},
+  functionTextWrap: {flex: 1, minWidth: 0, justifyContent: 'center'},
+  functionLabel: {fontSize: 7, lineHeight: 10, color: '#4E5D51', fontWeight: '800'},
+  functionValue: {fontSize: 10, lineHeight: 13, color: '#719177', fontWeight: '900', marginTop: 2},
   functionValueWarn: {color: '#D98474'},
-  routineCard: {backgroundColor: '#FFF', borderRadius: 17, padding: 17, marginTop: 17, shadowColor: '#879385', shadowOpacity: 0.08, shadowOffset: {width: 0, height: 2}, shadowRadius: 8, elevation: 1},
+  routineCard: {backgroundColor: '#FFF', borderRadius: 18, padding: 17, marginTop: 17, shadowColor: '#879385', shadowOpacity: 0.08, shadowOffset: {width: 0, height: 2}, shadowRadius: 8, elevation: 1},
   routineHeading: {flexDirection: 'row', alignItems: 'center', gap: 3},
   routineHeadingText: {fontSize: 14, fontWeight: '800', color: '#3E4A41'},
   leaf: {fontSize: 14, color: '#66A472'},
   checkButton: {backgroundColor: '#F2F7F0', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6},
   checkText: {fontSize: 9, color: '#69906F'},
-  routineLine: {flexDirection: 'row', alignItems: 'flex-start', marginTop: 16},
-  timeBox: {width: 38, height: 48, borderRadius: 8, backgroundColor: '#FFF6DD', alignItems: 'center', justifyContent: 'center', marginRight: 7},
+  routineLine: {flexDirection: 'row', alignItems: 'flex-start', marginTop: 17},
+  timeBox: {width: 40, height: 50, borderRadius: 9, backgroundColor: '#FFF6DD', alignItems: 'center', justifyContent: 'center', marginRight: 8},
   nightBox: {backgroundColor: '#EFF2FF'},
   timeIcon: {fontSize: 16, color: '#F5B638'},
   nightIcon: {color: '#7589DB'},
@@ -362,14 +372,14 @@ const styles = StyleSheet.create({
   nightText: {color: '#6375B9'},
   products: {flex: 1, flexDirection: 'row', justifyContent: 'space-between'},
   product: {width: 41, alignItems: 'center'},
-  productBottle: {width: 20, height: 37, borderRadius: 5},
+  productBottle: {width: 17, height: 31, borderRadius: 5},
   productCap: {position: 'absolute', top: -5, alignSelf: 'center', width: 10, height: 6, borderRadius: 2, backgroundColor: '#718274'},
-  productName: {fontSize: 9, color: '#4B564C', fontWeight: '800', marginTop: 5},
-  productDetail: {fontSize: 8, color: '#8D9790', marginTop: 2},
-  productTag: {marginTop: 5, backgroundColor: '#F3F6F1', borderRadius: 7, paddingHorizontal: 4, paddingVertical: 3, minWidth: 43},
-  productTagText: {fontSize: 7, textAlign: 'center', color: '#75937A'},
+  productName: {fontSize: 8, color: '#4B564C', fontWeight: '800', marginTop: 3},
+  productDetail: {fontSize: 7, color: '#8D9790', marginTop: 1},
+  productTag: {marginTop: 3, backgroundColor: '#F3F6F1', borderRadius: 7, paddingHorizontal: 3, paddingVertical: 2, minWidth: 40},
+  productTagText: {fontSize: 6, textAlign: 'center', color: '#75937A'},
   nextArrow: {alignSelf: 'center', marginTop: 13, color: '#A4ADA5', fontSize: 16},
-  bottomArea: {marginTop: 'auto', paddingTop: 18},
+  bottomArea: {marginTop: 'auto', paddingTop: 12},
   shortcutRow: {flexDirection: 'row', gap: 8},
   shortcut: {flex: 1, minHeight: 68, borderRadius: 13, padding: 10, flexDirection: 'row', alignItems: 'center'},
   searchShortcut: {backgroundColor: '#F0F5EE'},
