@@ -43,7 +43,6 @@ export function ProductExploreScreen({navigate}: {navigate: Navigate}) {
               <Text style={styles.pageTitle}>제품 찾기</Text>
               <Text style={styles.pageDescription}>내 피부에 맞는 제품을 찾아보세요</Text>
             </View>
-            <SkinIllustration />
           </View>
 
           <View style={styles.searchBox}>
@@ -139,7 +138,7 @@ const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FFFDF9'},
   page: {flex: 1},
   screen: {paddingHorizontal: 24, paddingTop: 28, paddingBottom: 18},
-  brandHeader: {height: 156, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  brandHeader: {height: 106, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
   brandCopy: {alignSelf: 'flex-start'},
   brand: {fontSize: 24, color: '#2F6848', fontWeight: '900', letterSpacing: -1.5},
   brandLeaf: {position: 'absolute', right: -17, top: -8, fontSize: 20, color: '#568A65'},

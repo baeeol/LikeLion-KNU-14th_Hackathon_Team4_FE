@@ -117,7 +117,6 @@ function BrandHeader() {
         <BrandLogo />
         <Text style={styles.brandDescription}>내 화장품 루틴을 똑똑하게 관리해보세요</Text>
       </View>
-      <SkinIllustration />
     </View>
   );
 }
@@ -208,7 +207,7 @@ function SkinIllustration() {
 const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FFFDF9'},
   screen: {paddingHorizontal: 24, paddingTop: 28, paddingBottom: 22},
-  brandHeader: {height: 148, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+  brandHeader: {height: 106, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
   brandCopy: {alignSelf: 'flex-start'},
   brand: {fontSize: 26, letterSpacing: -1.6, color: '#2F6848', fontWeight: '900'},
   brandLeaf: {position: 'absolute', right: -17, top: -8, fontSize: 22, color: '#568A65'},

@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   cardHeading: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
   cardHeadingText: {fontSize: 14, fontWeight: '800', color: '#3E4A41'},
   detailLink: {fontSize: 10, color: '#78847C'},
-  scoreRow: {flexDirection: 'row', alignItems: 'center', marginTop: 14},
+  scoreRow: {flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingLeft: 6},
   scoreCircle: {width: 84, height: 84, borderRadius: 42, borderWidth: 7, borderColor: '#377347', borderLeftColor: '#DCEADE', alignItems: 'center', justifyContent: 'center'},
   score: {fontSize: 23, color: '#2E6C42', fontWeight: '800'},
   scoreUnit: {fontSize: 11, color: '#65816B', marginTop: -4},
