@@ -31,7 +31,7 @@ function createBotReply(text: string) {
   return '말씀해주신 내용을 루틴 기록에 반영했어요. 오늘은 피부 자극이 느껴지는지 가볍게 확인해볼까요?';
 }
 
-export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
+export function RoutineConsultScreen({navigate, initialQuestion = '', onQuestionHandled}: {navigate: Navigate; initialQuestion?: string; onQuestionHandled?: () => void}) {
   const [message, setMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const chatScrollRef = useRef<ScrollView>(null);
@@ -39,6 +39,15 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
   useEffect(() => {
     chatScrollRef.current?.scrollToEnd({animated: true});
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (!initialQuestion) {
+      return;
+    }
+
+    setMessage(initialQuestion);
+    onQuestionHandled?.();
+  }, [initialQuestion, onQuestionHandled]);
 
   const sendMessage = () => {
     const trimmedMessage = message.trim();
@@ -69,12 +78,19 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
         <View style={styles.screen}>
           <Header />
           <ConsultHero onBack={() => navigate('home')} />
-          <IntroMessage />
+          <Pressable onPress={() => navigate('productExplore')} style={styles.productExploreLink}>
+            <View style={styles.productExploreIcon}><Text style={styles.productExploreIconText}>⌕</Text></View>
+            <View style={styles.productExploreCopy}><Text style={styles.productExploreTitle}>새 제품을 찾고 있나요?</Text><Text style={styles.productExploreText}>구매 전 AI 루틴과 비교해보세요.</Text></View>
+            <Text style={styles.productExploreArrow}>›</Text>
+          </Pressable>
           <ScrollView
             ref={chatScrollRef}
             style={styles.chatScroll}
             contentContainerStyle={styles.chatContent}
             showsVerticalScrollIndicator={false}>
+          <BotMessage>
+            <Text style={styles.messageText}>현재 루틴을 기준으로{`\n`}원인을 함께 찾아볼게요.  ✧</Text>
+          </BotMessage>
           {chatMessages.map(chatMessage =>
             chatMessage.sender === 'user' ? (
               <UserMessage
@@ -170,7 +186,7 @@ const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FFFDF9'}, page: {flex: 1}, screen: {flex: 1, paddingHorizontal: 24, paddingTop: 40}, chatScroll: {flex: 1, marginTop: 8}, chatContent: {paddingBottom: 18},
   header: {height: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}, headerClover: {fontSize: 22, color: '#43815B'}, hero: {height: 112, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, heroTitleRow: {flexDirection: 'row', alignItems: 'center'}, heroBackButton: {width: 28, height: 36, justifyContent: 'center', marginRight: 5}, heroBackIcon: {fontSize: 37, lineHeight: 32, color: '#374239'}, heroTitle: {fontSize: 28, letterSpacing: -1.4, color: '#303A32', fontWeight: '900'}, heroDescription: {fontSize: 11, lineHeight: 16, color: '#717C73', marginTop: 8},
   robotIllustration: {width: 134, height: 101, position: 'relative'}, robotSparkle: {position: 'absolute', top: 0, right: 9, fontSize: 16, color: '#E7C87B'}, robotBody: {position: 'absolute', right: 34, top: 27, width: 58, height: 57, borderRadius: 19, backgroundColor: '#EDF0E4', borderWidth: 1, borderColor: '#B3BEA9', alignItems: 'center'}, robotHead: {position: 'absolute', top: -13, width: 56, height: 38, borderRadius: 19, backgroundColor: '#E5ECDD', borderWidth: 1, borderColor: '#99AA93', alignItems: 'center', justifyContent: 'center'}, robotAntenna: {position: 'absolute', top: -13, width: 1, height: 12, backgroundColor: '#578561'}, robotEyesLarge: {fontSize: 16, color: '#447D55'}, robotPlant: {position: 'absolute', right: 0, bottom: 13, color: '#A4B89B', fontSize: 18}, robotJar: {position: 'absolute', left: 22, bottom: 4, width: 32, height: 20, borderRadius: 5, backgroundColor: '#D7DDCC'}, robotBottle: {position: 'absolute', left: 10, bottom: 4, width: 13, height: 36, borderRadius: 4, backgroundColor: '#B5C2A9'},
-  introMessage: {minHeight: 49, borderRadius: 15, backgroundColor: '#FFF', shadowColor: '#758075', shadowOpacity: 0.08, shadowOffset: {width: 0, height: 2}, shadowRadius: 7, elevation: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10}, introText: {fontSize: 11, lineHeight: 15, color: '#3E4B42', fontWeight: '800', marginLeft: 9},
+  introMessage: {minHeight: 49, borderRadius: 15, backgroundColor: '#FFF', shadowColor: '#758075', shadowOpacity: 0.08, shadowOffset: {width: 0, height: 2}, shadowRadius: 7, elevation: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10}, introText: {fontSize: 11, lineHeight: 15, color: '#3E4B42', fontWeight: '800', marginLeft: 9}, productExploreLink: {height: 52, borderRadius: 14, backgroundColor: '#F0F6ED', marginTop: 9, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center'}, productExploreIcon: {width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', marginRight: 9}, productExploreIconText: {fontSize: 18, color: '#4C8258'}, productExploreCopy: {flex: 1}, productExploreTitle: {fontSize: 10, color: '#48634C', fontWeight: '800'}, productExploreText: {fontSize: 8, color: '#839083', marginTop: 3}, productExploreArrow: {fontSize: 23, color: '#51825C'},
   robotAvatar: {width: 37, height: 30, borderRadius: 15, backgroundColor: '#E6EDE1', borderWidth: 1, borderColor: '#C2CEBC', alignItems: 'center', justifyContent: 'center'}, smallRobotAvatar: {width: 27, height: 23, borderRadius: 12, marginTop: 7}, robotFace: {width: 25, height: 15, borderRadius: 8, backgroundColor: '#557E5C', alignItems: 'center', justifyContent: 'center'}, robotEyes: {color: '#E5F2E6', fontSize: 8},
   userRow: {flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: 10}, userBubble: {backgroundColor: '#EFF4E9', borderRadius: 16, borderBottomRightRadius: 4, paddingHorizontal: 14, paddingVertical: 11}, userText: {fontSize: 11, color: '#4B574D'}, time: {fontSize: 7, color: '#9AA29B', marginLeft: 5, marginBottom: 3}, readMark: {fontSize: 8, color: '#6B9B74', marginLeft: 2, marginBottom: 3},
   botRow: {flexDirection: 'row', alignItems: 'flex-end', marginTop: 8}, botBubble: {maxWidth: '78%', backgroundColor: '#FFF', borderRadius: 14, borderBottomLeftRadius: 4, paddingHorizontal: 12, paddingVertical: 10, marginLeft: 7, shadowColor: '#758075', shadowOpacity: 0.05, shadowOffset: {width: 0, height: 2}, shadowRadius: 5, elevation: 1}, messageText: {fontSize: 11, lineHeight: 16, color: '#4C574E'},
