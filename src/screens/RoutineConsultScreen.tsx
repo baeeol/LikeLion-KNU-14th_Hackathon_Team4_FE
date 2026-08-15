@@ -22,8 +22,8 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFDF9" />
       <View style={styles.page}>
         <View style={styles.screen}>
-          <Header onBack={() => navigate('home')} />
-          <ConsultHero />
+          <Header />
+          <ConsultHero onBack={() => navigate('home')} />
           <IntroMessage />
           <ScrollView
             style={styles.chatScroll}
@@ -64,12 +64,12 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
   );
 }
 
-function Header({onBack}: {onBack: () => void}) {
-  return <View style={styles.header}><TouchableOpacity accessibilityRole="button" accessibilityLabel="홈으로 돌아가기" activeOpacity={0.6} hitSlop={{top: 16, bottom: 16, left: 16, right: 16}} onPress={() => onBack()} style={styles.backButtonWrap}><Text style={styles.backButton}>‹</Text></TouchableOpacity><BrandLogo /><View style={styles.headerSpace}/></View>;
+function Header() {
+  return <View style={styles.header}><BrandLogo /><Text style={styles.headerClover}>♧</Text></View>;
 }
 
-function ConsultHero() {
-  return <View style={styles.hero}><View><Text style={styles.heroTitle}>AI 루틴 상담</Text><Text style={styles.heroDescription}>피부 고민을 알려주시면{`\n`}현재 루틴을 바탕으로 조정안을 제안해드려요.</Text></View><RobotIllustration /></View>;
+function ConsultHero({onBack}: {onBack: () => void}) {
+  return <View style={styles.hero}><View><View style={styles.heroTitleRow}><TouchableOpacity accessibilityRole="button" accessibilityLabel="홈으로 돌아가기" activeOpacity={0.6} hitSlop={{top: 12, bottom: 12, left: 12, right: 12}} onPress={onBack} style={styles.heroBackButton}><Text style={styles.heroBackIcon}>‹</Text></TouchableOpacity><Text style={styles.heroTitle}>AI 루틴 상담</Text></View><Text style={styles.heroDescription}>피부 고민을 알려주시면{`\n`}현재 루틴을 바탕으로 조정안을 제안해드려요.</Text></View><RobotIllustration /></View>;
 }
 
 function IntroMessage() {
@@ -117,9 +117,8 @@ function RobotIllustration() {return <View style={styles.robotIllustration}><Tex
 function RestIllustration() {return <View style={styles.restIllustration}><View style={styles.daysCard}><Text style={styles.daysNumber}>7</Text><Text style={styles.daysLabel}>DAYS</Text></View><View style={styles.restBottleOne}/><View style={styles.restBottleTwo}/><Text style={styles.restLeaf}>❘</Text></View>;}
 
 const styles = StyleSheet.create({
-  safeArea: {flex: 1, backgroundColor: '#FFFDF9'}, page: {flex: 1}, screen: {flex: 1, paddingHorizontal: 24, paddingTop: 28}, chatScroll: {flex: 1, marginTop: 8}, chatContent: {paddingBottom: 18},
-  header: {height: 42, flexDirection: 'row', alignItems: 'flex-start'}, backButtonWrap: {width: 42, height: 42, alignItems: 'flex-start', justifyContent: 'center', marginRight: 10}, backButton: {fontSize: 37, lineHeight: 32, color: '#374239'}, brand: {fontSize: 17, color: '#357248', fontWeight: '900'}, brandLeaf: {position: 'absolute', right: -13, top: -8, color: '#639468', fontSize: 14}, headerSpace: {flex: 1},
-  hero: {height: 112, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, heroTitle: {fontSize: 28, letterSpacing: -1.4, color: '#303A32', fontWeight: '900'}, heroDescription: {fontSize: 11, lineHeight: 16, color: '#717C73', marginTop: 8},
+  safeArea: {flex: 1, backgroundColor: '#FFFDF9'}, page: {flex: 1}, screen: {flex: 1, paddingHorizontal: 24, paddingTop: 40}, chatScroll: {flex: 1, marginTop: 8}, chatContent: {paddingBottom: 18},
+  header: {height: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}, headerClover: {fontSize: 22, color: '#43815B'}, hero: {height: 112, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, heroTitleRow: {flexDirection: 'row', alignItems: 'center'}, heroBackButton: {width: 28, height: 36, justifyContent: 'center', marginRight: 5}, heroBackIcon: {fontSize: 37, lineHeight: 32, color: '#374239'}, heroTitle: {fontSize: 28, letterSpacing: -1.4, color: '#303A32', fontWeight: '900'}, heroDescription: {fontSize: 11, lineHeight: 16, color: '#717C73', marginTop: 8},
   robotIllustration: {width: 134, height: 101, position: 'relative'}, robotSparkle: {position: 'absolute', top: 0, right: 9, fontSize: 16, color: '#E7C87B'}, robotBody: {position: 'absolute', right: 34, top: 27, width: 58, height: 57, borderRadius: 19, backgroundColor: '#EDF0E4', borderWidth: 1, borderColor: '#B3BEA9', alignItems: 'center'}, robotHead: {position: 'absolute', top: -13, width: 56, height: 38, borderRadius: 19, backgroundColor: '#E5ECDD', borderWidth: 1, borderColor: '#99AA93', alignItems: 'center', justifyContent: 'center'}, robotAntenna: {position: 'absolute', top: -13, width: 1, height: 12, backgroundColor: '#578561'}, robotEyesLarge: {fontSize: 16, color: '#447D55'}, robotPlant: {position: 'absolute', right: 0, bottom: 13, color: '#A4B89B', fontSize: 18}, robotJar: {position: 'absolute', left: 22, bottom: 4, width: 32, height: 20, borderRadius: 5, backgroundColor: '#D7DDCC'}, robotBottle: {position: 'absolute', left: 10, bottom: 4, width: 13, height: 36, borderRadius: 4, backgroundColor: '#B5C2A9'},
   introMessage: {minHeight: 49, borderRadius: 15, backgroundColor: '#FFF', shadowColor: '#758075', shadowOpacity: 0.08, shadowOffset: {width: 0, height: 2}, shadowRadius: 7, elevation: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10}, introText: {fontSize: 11, lineHeight: 15, color: '#3E4B42', fontWeight: '800', marginLeft: 9},
   robotAvatar: {width: 37, height: 30, borderRadius: 15, backgroundColor: '#E6EDE1', borderWidth: 1, borderColor: '#C2CEBC', alignItems: 'center', justifyContent: 'center'}, smallRobotAvatar: {width: 27, height: 23, borderRadius: 12, marginTop: 7}, robotFace: {width: 25, height: 15, borderRadius: 8, backgroundColor: '#557E5C', alignItems: 'center', justifyContent: 'center'}, robotEyes: {color: '#E5F2E6', fontSize: 8},
