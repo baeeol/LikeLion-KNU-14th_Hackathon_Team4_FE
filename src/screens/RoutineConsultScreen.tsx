@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -13,9 +13,54 @@ import {
 import {Navigate} from '../navigation/types';
 import {BrandLogo} from '../components/common/BrandLogo';
 
+type ChatMessage = {
+  id: number;
+  sender: 'user' | 'bot';
+  text: string;
+};
+
+function createBotReply(text: string) {
+  if (text.includes('건조')) {
+    return '건조함도 함께 느껴진다면, 자극 성분을 쉬는 동안 보습 크림은 평소보다 충분히 발라주세요.';
+  }
+
+  if (text.includes('붉') || text.includes('따갑')) {
+    return '붉어짐과 따가움이 지속되면 새로운 제품 추가는 잠시 멈추고, 기본 보습 루틴 위주로 관찰해보는 것을 권해요.';
+  }
+
+  return '말씀해주신 내용을 루틴 기록에 반영했어요. 오늘은 피부 자극이 느껴지는지 가볍게 확인해볼까요?';
+}
+
 export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
   const [message, setMessage] = useState('');
-  const [proposalAccepted, setProposalAccepted] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const chatScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    chatScrollRef.current?.scrollToEnd({animated: true});
+  }, [chatMessages]);
+
+  const sendMessage = () => {
+    const trimmedMessage = message.trim();
+
+    if (!trimmedMessage) {
+      return;
+    }
+
+    const userMessage: ChatMessage = {
+      id: Date.now(),
+      sender: 'user',
+      text: trimmedMessage,
+    };
+    const botMessage: ChatMessage = {
+      id: userMessage.id + 1,
+      sender: 'bot',
+      text: createBotReply(trimmedMessage),
+    };
+
+    setChatMessages(currentMessages => [...currentMessages, userMessage, botMessage]);
+    setMessage('');
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -26,24 +71,23 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
           <ConsultHero onBack={() => navigate('home')} />
           <IntroMessage />
           <ScrollView
+            ref={chatScrollRef}
             style={styles.chatScroll}
             contentContainerStyle={styles.chatContent}
             showsVerticalScrollIndicator={false}>
-          <UserMessage text="요즘 피부가 따갑고 붉어졌어요." time="오전 9:41" />
-          <BotMessage>
-            <Text style={styles.messageText}>최근 루틴 변화와 현재 사용 제품을{`\n`}함께 확인해볼게요.</Text>
-          </BotMessage>
-          <RoutineCheckCard />
-          <BotMessage time="오전 9:42">
-            <Text style={styles.messageText}>최근 일주일 동안 AHA 토너 사용 빈도가 늘었고,{`\n`}레티놀 세럼과 같은 저녁에 사용된 날이{`\n`}확인됐어요.</Text>
-          </BotMessage>
-          <SuggestionCard />
-          <BotMessage time="오전 9:43">
-            <Text style={styles.messageText}>한 번에 여러 제품을 바꾸기보다{`\n`}한 가지씩 조정하는 것이 좋아요.</Text>
-          </BotMessage>
-          <ActionButtons accepted={proposalAccepted} onAccept={() => setProposalAccepted(true)} />
-          <QuickQuestions />
-          <NextCheckCard />
+          {chatMessages.map(chatMessage =>
+            chatMessage.sender === 'user' ? (
+              <UserMessage
+                key={chatMessage.id}
+                text={chatMessage.text}
+                time="방금"
+              />
+            ) : (
+              <BotMessage key={chatMessage.id} time="방금">
+                <Text style={styles.messageText}>{chatMessage.text}</Text>
+              </BotMessage>
+            ),
+          )}
           </ScrollView>
         </View>
 
@@ -54,8 +98,14 @@ export function RoutineConsultScreen({navigate}: {navigate: Navigate}) {
             placeholder="추가로 궁금한 점을 입력하세요"
             placeholderTextColor="#A3ABA4"
             style={styles.input}
+            multiline
+            blurOnSubmit={false}
           />
-          <Pressable onPress={() => setMessage('')} style={styles.sendButton}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="메시지 전송"
+            onPress={sendMessage}
+            style={[styles.sendButton, !message.trim() && styles.sendButtonDisabled]}>
             <Text style={styles.sendIcon}>➤</Text>
           </Pressable>
         </View>
@@ -130,5 +180,5 @@ const styles = StyleSheet.create({
   actionRow: {flexDirection: 'row', gap: 6, marginTop: 13}, primaryAction: {height: 37, flex: 1.15, minWidth: 0, borderRadius: 18, backgroundColor: '#4D875B', alignItems: 'center', justifyContent: 'center'}, acceptedAction: {backgroundColor: '#397C4E'}, primaryActionText: {fontSize: 9, color: '#FFF', fontWeight: '800'}, secondaryAction: {height: 37, flex: 1.22, minWidth: 0, borderRadius: 18, borderWidth: 1, borderColor: '#4D875B', alignItems: 'center', justifyContent: 'center'}, secondaryActionText: {fontSize: 8, color: '#487E56', fontWeight: '800'}, keepAction: {height: 37, flex: .85, minWidth: 0, borderRadius: 18, borderWidth: 1, borderColor: '#E2E6E1', alignItems: 'center', justifyContent: 'center'}, keepActionText: {fontSize: 8, color: '#626E64'},
   quickRow: {flexDirection: 'row', gap: 7, marginTop: 10}, quickQuestion: {height: 33, flex: 1, borderWidth: 1, borderColor: '#EEF0EC', borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}, quickIcon: {fontSize: 13, color: '#68936E', marginRight: 6}, quickText: {fontSize: 9, color: '#647065'},
   nextCheck: {height: 53, backgroundColor: '#FFF', borderRadius: 12, marginTop: 9, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', shadowColor: '#758075', shadowOpacity: 0.06, shadowOffset: {width: 0, height: 2}, shadowRadius: 5, elevation: 1}, calendarIcon: {fontSize: 20, color: '#568B5F', marginRight: 10}, nextCheckTextWrap: {flex: 1}, nextCheckTitle: {fontSize: 10, color: '#5E765F', fontWeight: '800'}, nextCheckText: {fontSize: 9, color: '#7C877E', marginTop: 4}, nextArrow: {fontSize: 22, color: '#748076'},
-  composer: {height: 56, paddingHorizontal: 26, paddingBottom: 8, flexDirection: 'row', gap: 8, backgroundColor: '#FFFDF9'}, input: {height: 36, flex: 1, borderRadius: 18, borderWidth: 1, borderColor: '#E9ECE8', paddingHorizontal: 13, fontSize: 9, color: '#526054'}, sendButton: {width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: '#4F8A5E', alignItems: 'center', justifyContent: 'center'}, sendIcon: {fontSize: 16, color: '#4F8A5E', transform: [{rotate: '-35deg'}]},
+  composer: {height: 56, paddingHorizontal: 26, paddingBottom: 8, flexDirection: 'row', gap: 8, backgroundColor: '#FFFDF9'}, input: {height: 36, flex: 1, borderRadius: 18, borderWidth: 1, borderColor: '#E9ECE8', paddingHorizontal: 13, fontSize: 9, color: '#526054'}, sendButton: {width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: '#4F8A5E', alignItems: 'center', justifyContent: 'center'}, sendButtonDisabled: {borderColor: '#C9D2CA', opacity: 0.5}, sendIcon: {fontSize: 16, color: '#4F8A5E', transform: [{rotate: '-35deg'}]},
 });
