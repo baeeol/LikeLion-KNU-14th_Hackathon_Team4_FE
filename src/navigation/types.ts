@@ -1,5 +1,6 @@
 export type AppScreen =
   | 'home'
+  | 'myPage'
   | 'productExplore'
   | 'routineConsult';
 

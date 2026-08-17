@@ -1,26 +1,48 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, View} from 'react-native';
 import {BrandLogo} from '../components/common/BrandLogo';
 import {Navigate} from '../navigation/types';
+import {CareProduct, searchCareProducts} from '../api/careProduct';
 
-type Product = {brand: string; name: string; price: string; score: string; category: '보습' | '진정' | '장벽' | '선크림'; tone: string};
-
-const PRODUCTS: Product[] = [
-  {brand: '에스트라', name: '아토베리어 365 크림', price: '28,000원', score: '92%', category: '보습', tone: '#DCE5E1'},
-  {brand: '일리윤', name: '세라마이드 아토 세럼', price: '24,000원', score: '90%', category: '장벽', tone: '#D9E7DE'},
-  {brand: '라운드랩', name: '자작나무 수분 크림', price: '26,000원', score: '88%', category: '진정', tone: '#E8E6DC'},
+const DEMO_PRODUCTS: CareProduct[] = [
+  {id: 1, brand: '에스트라', name: '아토베리어 365 크림', price: 28000, category: '크림', functions: ['보습', '피부 장벽']},
+  {id: 2, brand: '일리윤', name: '세라마이드 아토 세럼', price: 24000, category: '세럼', functions: ['피부 장벽', '진정']},
+  {id: 3, brand: '라운드랩', name: '자작나무 수분 크림', price: 26000, category: '크림', functions: ['보습', '진정']},
 ];
-const FILTERS = ['전체', '보습', '진정', '장벽', '선크림'] as const;
+const FILTERS = ['전체', '보습', '피부 장벽', '진정', '각질 케어', '트러블·피지', '미백·톤', '자외선 차단'] as const;
 
 export function ProductExploreScreen({navigate}: {navigate: Navigate}) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('전체');
   const [query, setQuery] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const visibleProducts = useMemo(() => PRODUCTS.filter(product => {
-    const matchesFilter = filter === '전체' || product.category === filter;
-    const keyword = query.trim().toLowerCase();
-    return matchesFilter && (!keyword || `${product.brand} ${product.name}`.toLowerCase().includes(keyword));
-  }), [filter, query]);
+  const [products, setProducts] = useState<CareProduct[]>(DEMO_PRODUCTS);
+  const [selectedProduct, setSelectedProduct] = useState<CareProduct | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  useEffect(() => {
+    const keyword = query.trim();
+    if (!keyword) {
+      setProducts(DEMO_PRODUCTS);
+      setSearchError('');
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsSearching(true);
+      setSearchError('');
+      searchCareProducts(keyword)
+        .then(setProducts)
+        .catch(() => setSearchError('제품 정보를 불러오지 못했어요.'))
+        .finally(() => setIsSearching(false));
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const visibleProducts = useMemo(() => products.filter(product => {
+    const matchesFilter = matchesFunction(product, filter);
+    return matchesFilter;
+  }), [filter, products]);
 
   return <SafeAreaView style={styles.safeArea}>
     <StatusBar barStyle="dark-content" backgroundColor="#FFFDF9" />
@@ -30,20 +52,40 @@ export function ProductExploreScreen({navigate}: {navigate: Navigate}) {
         <View style={styles.titleRow}><Pressable accessibilityRole="button" accessibilityLabel="홈으로 돌아가기" hitSlop={12} onPress={() => navigate('home')} style={styles.backButton}><Text style={styles.backIcon}>‹</Text></Pressable><Text style={styles.title}>제품 찾기</Text></View>
         <Text style={styles.description}>내 피부에 맞는 제품을 찾아보세요</Text>
         <View style={styles.searchBox}><Text style={styles.searchIcon}>⌕</Text><TextInput value={query} onChangeText={setQuery} placeholder="제품명, 브랜드, 성분으로 검색" placeholderTextColor="#9AA39B" style={styles.searchInput} /></View>
-        <View style={styles.sectionTitle}><Text style={styles.sparkle}>✧</Text><Text style={styles.sectionTitleText}>현재 루틴에 필요한 제품</Text></View>
-        <View style={styles.noticeCard}><View style={styles.noticeIcon}><Text>♧</Text></View><View><Text style={styles.noticeTitle}>보습 장벽 보완이 필요해요</Text><Text style={styles.noticeText}>현재 루틴의 수분 공급은 충분하지만,{`\n`}피부 장벽을 보완해주는 제품이 부족해요.</Text></View></View>
         <View style={styles.filterRow}>{FILTERS.map(item => <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}><Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text></Pressable>)}</View>
-        <View style={styles.productGrid}>{visibleProducts.map(product => <ProductCard key={product.name} product={product} selected={selectedProduct?.name === product.name} onPress={() => setSelectedProduct(product)} />)}</View>
-        {selectedProduct && <View style={styles.selectedProductBox}><View><Text style={styles.selectedLabel}>선택한 제품</Text><Text style={styles.selectedName}>{selectedProduct.brand} {selectedProduct.name}</Text></View><Pressable onPress={() => navigate('routineConsult', {consultQuestion: `새 제품 구매 전 상담: ${selectedProduct.brand} ${selectedProduct.name} (${selectedProduct.category}, ${selectedProduct.price})을 제 루틴에 추가해도 될까요?`})} style={styles.consultButton}><Text style={styles.consultButtonText}>AI에게 물어보기  ›</Text></Pressable></View>}
-        {visibleProducts.length === 0 && <Text style={styles.emptyText}>검색 조건에 맞는 제품이 없어요.</Text>}
+        <View style={styles.productGrid}>{visibleProducts.map(product => <ProductCard key={product.id} product={product} selected={selectedProduct?.id === product.id} onPress={() => setSelectedProduct(currentProduct => currentProduct?.id === product.id ? null : product)} />)}</View>
+        {selectedProduct && <View style={styles.selectedProductBox}><View><Text style={styles.selectedLabel}>선택한 제품</Text><Text style={styles.selectedName}>{selectedProduct.brand} {selectedProduct.name}</Text></View><Pressable onPress={() => navigate('routineConsult', {consultQuestion: `새 제품 구매 전 상담: ${selectedProduct.brand} ${selectedProduct.name} (${selectedProduct.category}, ${formatPrice(selectedProduct.price)})을 제 루틴에 추가해도 될까요?`})} style={styles.consultButton}><Text style={styles.consultButtonText}>AI에게 물어보기  ›</Text></Pressable></View>}
+        {isSearching && <Text style={styles.emptyText}>제품을 검색하고 있어요.</Text>}
+        {!isSearching && searchError ? <Text style={styles.emptyText}>{searchError}</Text> : null}
+        {!isSearching && !searchError && visibleProducts.length === 0 && <Text style={styles.emptyText}>검색 결과가 없어요.</Text>}
       </ScrollView>
-      <View style={styles.bottomNav}><NavItem icon="⌂" label="홈" onPress={() => navigate('home')} /><NavItem icon="ai" label="AI 상담" onPress={() => navigate('routineConsult')} /><NavItem icon="⌕" label="제품 찾기" active /><NavItem icon="♙" label="마이" /></View>
+      <View style={styles.bottomNav}><NavItem icon="⌂" label="홈" onPress={() => navigate('home')} /><NavItem icon="ai" label="AI 상담" onPress={() => navigate('routineConsult')} /><NavItem icon="⌕" label="제품 찾기" active /><NavItem icon="♙" label="마이페이지" onPress={() => navigate('myPage')} /></View>
     </View>
   </SafeAreaView>;
 }
 
-function ProductCard({product, selected, onPress}: {product: Product; selected: boolean; onPress: () => void}) {
-  return <Pressable onPress={onPress} style={[styles.productCard, selected && styles.productCardSelected]}><View style={[styles.productImage, {backgroundColor: product.tone}]}><Text style={styles.productImageText}>{product.brand}</Text></View><Text style={styles.brand}>{product.brand}</Text><Text style={styles.productName}>{product.name}</Text><Text style={styles.price}>{product.price}</Text><View style={styles.tag}><Text style={styles.tagText}>{product.category} 추천</Text></View></Pressable>;
+function ProductCard({product, selected, onPress}: {product: CareProduct; selected: boolean; onPress: () => void}) {
+  const functions = product.functions ?? inferFunctions(product);
+  return <Pressable onPress={onPress} style={[styles.productCard, selected && styles.productCardSelected]}><View style={[styles.productImage, {backgroundColor: getProductTone(functions[0])}]}><Text style={styles.productImageText}>{product.brand}</Text></View><Text style={styles.brand}>{product.brand}</Text><Text style={styles.productName}>{product.name}</Text><Text style={styles.price}>{formatPrice(product.price)}</Text><View style={styles.tag}><Text style={styles.tagText}>{functions[0] ?? product.category}</Text></View></Pressable>;
+}
+
+function formatPrice(price: number) { return `${price.toLocaleString('ko-KR')}원`; }
+function getProductTone(functionName?: string) { if (functionName === '진정') return '#D8E7D6'; if (functionName === '피부 장벽') return '#DDE4E1'; if (functionName === '자외선 차단') return '#F1E5C9'; if (functionName === '각질 케어') return '#F4E4BC'; return '#E8E6DC'; }
+function matchesFunction(product: CareProduct, filter: (typeof FILTERS)[number]) {
+  if (filter === '전체') return true;
+  return (product.functions ?? inferFunctions(product)).includes(filter);
+}
+function inferFunctions(product: CareProduct) {
+  const value = `${product.category} ${product.name}`.replaceAll(' ', '');
+  const functions: string[] = [];
+  if (value.includes('수분') || value.includes('보습')) functions.push('보습');
+  if (value.includes('세라마이드') || value.includes('장벽')) functions.push('피부 장벽');
+  if (value.includes('진정') || value.includes('판테놀') || value.includes('시카')) functions.push('진정');
+  if (value.includes('AHA') || value.includes('BHA') || value.includes('각질')) functions.push('각질 케어');
+  if (value.includes('트러블') || value.includes('피지')) functions.push('트러블·피지');
+  if (value.includes('미백') || value.includes('비타민C') || value.includes('나이아신')) functions.push('미백·톤');
+  if (value.includes('선크림') || value.includes('자외선')) functions.push('자외선 차단');
+  return functions;
 }
 
 function NavItem({icon, label, active = false, onPress}: {icon: string; label: string; active?: boolean; onPress?: () => void}) { return <Pressable onPress={onPress} style={styles.navItem}>{icon === 'ai' ? <AiNavIcon active={active} /> : <Text style={[styles.navIcon, active && styles.navActive]}>{icon}</Text>}<Text style={[styles.navLabel, active && styles.navActive]}>{label}</Text></Pressable>; }

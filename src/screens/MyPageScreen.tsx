@@ -1,0 +1,87 @@
+import React, {useEffect, useMemo, useState} from 'react';
+import {Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View} from 'react-native';
+import {BrandLogo} from '../components/common/BrandLogo';
+import {Navigate} from '../navigation/types';
+import {getUser, SkinType, User} from '../api/user';
+import {getUserCareProducts, OwnedCareProduct} from '../api/careProduct';
+
+const SKIN_TYPES: SkinType[] = ['건성', '지성', '복합성', '수부지'];
+const FALLBACK_USER: User = {id: 1, nickname: '준영', age: 24, skinType: {type: '수부지'}};
+const FALLBACK_PRODUCTS: OwnedCareProduct[] = [
+  {id: 1, category: '토너', brand: '아누아', name: '어성초 77% 수딩 토너', usedInRoutine: true},
+  {id: 2, category: '세럼', brand: '일리윤', name: '세라마이드 아토 세럼', usedInRoutine: true},
+  {id: 3, category: '크림', brand: '라운드랩', name: '자작나무 수분 크림', usedInRoutine: false},
+];
+const RECORDS: Record<number, {title: string; detail: string; tone: 'green' | 'orange' | 'mint'}> = {
+  3: {title: '장벽 루틴 강화', detail: '세라마이드 크림을 추가했어요.', tone: 'green'},
+  7: {title: '각질 케어 조정', detail: 'AHA 토너 사용을 주 2회로 줄였어요.', tone: 'orange'},
+  12: {title: '진정 루틴 유지', detail: '판테놀 세럼을 유지하고 있어요.', tone: 'mint'},
+  16: {title: '수분 루틴 보완', detail: '히알루론산 수분 크림을 사용했어요.', tone: 'green'},
+};
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+export function MyPageScreen({navigate}: {navigate: Navigate}) {
+  const today = new Date();
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
+  const [user, setUser] = useState<User>(FALLBACK_USER);
+  const [ownedProducts, setOwnedProducts] = useState<OwnedCareProduct[]>(FALLBACK_PRODUCTS);
+  const monthLabel = `${today.getFullYear()}년 ${today.getMonth() + 1}월`;
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
+    const lastDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    return [...Array(firstDay).fill(null), ...Array.from({length: lastDate}, (_, index) => index + 1)];
+  }, [today]);
+  const selectedRecord = RECORDS[selectedDay];
+
+  useEffect(() => {
+    getUser(1).then(setUser).catch(() => {
+      // 백엔드 연결 전에도 해커톤 데모 화면은 기본 정보로 유지합니다.
+    });
+    getUserCareProducts(1).then(setOwnedProducts).catch(() => {
+      // 백엔드 연결 전에는 데모 제품을 보여줍니다.
+    });
+  }, []);
+
+  return <SafeAreaView style={styles.safeArea}>
+    <StatusBar barStyle="dark-content" backgroundColor="#FBFCF9" />
+    <View style={styles.page}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}><BrandLogo /><Text style={styles.clover}>♧</Text></View>
+        <Text style={styles.title}>마이페이지</Text>
+        <Text style={styles.description}>내 피부와 보유 제품을 확인해보세요.</Text>
+
+        <View style={styles.profileCard}>
+          <View style={styles.profileAvatar}><Text style={styles.avatarText}>준</Text></View>
+          <View><Text style={styles.nickname}>{user.nickname}님</Text><Text style={styles.age}>{user.age}세 · 루틴을 시작한 지 14일째</Text></View>
+        </View>
+
+        <Text style={styles.sectionTitle}>내 피부 타입</Text>
+        <View style={styles.skinTypeRow}>{SKIN_TYPES.map(type => <View key={type} style={[styles.skinType, type === user.skinType.type && styles.selectedSkinType]}><Text style={[styles.skinTypeText, type === user.skinType.type && styles.selectedSkinTypeText]}>{type}</Text></View>)}</View>
+        <Text style={styles.skinHint}>현재 선택: {user.skinType.type} · 내 피부 타입에 맞는 루틴을 추천해요.</Text>
+
+        <View style={styles.calendarCard}>
+          <View style={styles.calendarHeader}><Text style={styles.calendarTitle}>루틴 변화 기록</Text><Text style={styles.monthText}>{monthLabel}</Text></View>
+          <View style={styles.weekdayRow}>{WEEKDAYS.map(day => <Text key={day} style={styles.weekday}>{day}</Text>)}</View>
+          <View style={styles.daysGrid}>{calendarDays.map((day, index) => day ? <Pressable key={day} onPress={() => setSelectedDay(day)} style={[styles.dayCell, selectedDay === day && styles.selectedDayCell]}><Text style={[styles.dayNumber, selectedDay === day && styles.selectedDayNumber]}>{day}</Text>{RECORDS[day] && <View style={[styles.recordDot, recordTone(RECORDS[day].tone)]} />}</Pressable> : <View key={`blank-${index}`} style={styles.dayCell} />)}</View>
+          <View style={styles.legendRow}><Legend color="#62A06E" label="장벽·수분" /><Legend color="#F1CB70" label="각질 관리" /><Legend color="#A8CDA2" label="진정" /></View>
+        </View>
+        <View style={styles.recordCard}><View style={[styles.recordIcon, selectedRecord ? recordTone(selectedRecord.tone) : styles.grayTone]}><Text style={styles.recordIconText}>✓</Text></View><View style={styles.recordCopy}>{selectedRecord ? <><Text style={styles.recordTitle}>{selectedDay}일 · {selectedRecord.title}</Text><Text style={styles.recordText}>{selectedRecord.detail}</Text></> : <><Text style={styles.recordTitle}>{selectedDay}일 · 기록 없음</Text><Text style={styles.recordText}>이날은 기본 루틴을 유지했어요.</Text></>}</View></View>
+
+        <View style={styles.ownedHeader}><Text style={styles.sectionTitle}>보유 제품</Text><Text style={styles.productCount}>{ownedProducts.length}개</Text></View>
+        <Text style={styles.ownedDescription}>현재 루틴에 등록된 제품이에요.</Text>
+        <View style={styles.ownedList}>{ownedProducts.map(product => <OwnedProductCard key={product.id} product={product} />)}</View>
+      </ScrollView>
+      <View style={styles.bottomNav}><NavItem icon="⌂" label="홈" onPress={() => navigate('home')} /><NavItem icon="ai" label="AI 상담" onPress={() => navigate('routineConsult')} /><NavItem icon="⌕" label="제품 찾기" onPress={() => navigate('productExplore')} /><NavItem icon="♙" label="마이페이지" active /></View>
+    </View>
+  </SafeAreaView>;
+}
+
+function OwnedProductCard({product}: {product: OwnedCareProduct}) {return <View style={styles.ownedProduct}><View style={styles.productBottle}><View style={styles.bottleCap} /></View><View style={styles.ownedCopy}><Text style={styles.ownedCategory}>{product.category}</Text><Text style={styles.ownedName}>{product.brand} {product.name}</Text><Text style={styles.ownedFunction}>{product.usedInRoutine ? '현재 루틴에 사용 중인 제품' : '아직 루틴에 넣지 않은 제품'}</Text></View><Text style={[styles.ownedStatus, !product.usedInRoutine && styles.ownedInactiveStatus]}>{product.usedInRoutine ? '루틴 사용 중' : '보유 중'}</Text></View>;}
+function Legend({color, label}: {color: string; label: string}) {return <View style={styles.legend}><View style={[styles.legendDot, {backgroundColor: color}]} /><Text style={styles.legendText}>{label}</Text></View>;}
+function recordTone(tone: 'green' | 'orange' | 'mint') {return tone === 'orange' ? styles.orangeTone : tone === 'mint' ? styles.mintTone : styles.greenTone;}
+function NavItem({icon, label, active = false, onPress}: {icon: string; label: string; active?: boolean; onPress?: () => void}) {return <Pressable onPress={onPress} style={styles.navItem}>{icon === 'ai' ? <AiNavIcon active={active} /> : <Text style={[styles.navIcon, active && styles.navActive]}>{icon}</Text>}<Text style={[styles.navLabel, active && styles.navActive]}>{label}</Text></Pressable>;}
+function AiNavIcon({active}: {active: boolean}) {return <View style={[styles.aiNavIcon, active && styles.aiNavIconActive]}><View style={styles.aiAntenna} /><Text style={[styles.aiEyes, active && styles.aiEyesActive]}>• •</Text></View>;}
+
+const styles = StyleSheet.create({
+  safeArea: {flex: 1, backgroundColor: '#FBFCF9'}, page: {flex: 1}, content: {paddingHorizontal: 24, paddingTop: 40, paddingBottom: 18}, header: {height: 42, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, clover: {fontSize: 22, color: '#43815B'}, title: {fontSize: 27, fontWeight: '900', color: '#303932', marginTop: 30, letterSpacing: -1.2}, description: {fontSize: 11, color: '#7C867E', marginTop: 8}, profileCard: {height: 80, borderRadius: 16, backgroundColor: '#FFF', paddingHorizontal: 14, marginTop: 20, flexDirection: 'row', alignItems: 'center', shadowColor: '#758075', shadowOpacity: .08, shadowOffset: {width: 0, height: 3}, shadowRadius: 9, elevation: 2}, profileAvatar: {width: 46, height: 46, borderRadius: 23, backgroundColor: '#E6F0E3', alignItems: 'center', justifyContent: 'center', marginRight: 12}, avatarText: {fontSize: 17, fontWeight: '900', color: '#4B8057'}, nickname: {fontSize: 15, fontWeight: '900', color: '#334037'}, age: {fontSize: 9, color: '#818C83', marginTop: 5}, sectionTitle: {fontSize: 14, fontWeight: '900', color: '#3B473D', marginTop: 23}, skinTypeRow: {flexDirection: 'row', gap: 7, marginTop: 10}, skinType: {height: 36, flex: 1, borderRadius: 10, borderWidth: 1, borderColor: '#E1E6E0', alignItems: 'center', justifyContent: 'center'}, selectedSkinType: {borderColor: '#4D875B', backgroundColor: '#F3F9F1'}, skinTypeText: {fontSize: 10, color: '#7A847B'}, selectedSkinTypeText: {fontWeight: '800', color: '#427D51'}, skinHint: {fontSize: 9, color: '#768276', marginTop: 9}, ownedHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}, productCount: {fontSize: 11, color: '#4D875B', fontWeight: '800', marginTop: 23}, ownedDescription: {fontSize: 9, color: '#7C877E', marginTop: 6}, ownedList: {marginTop: 11, gap: 8}, ownedProduct: {minHeight: 69, borderRadius: 14, backgroundColor: '#FFF', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', shadowColor: '#758075', shadowOpacity: .06, shadowOffset: {width: 0, height: 2}, shadowRadius: 6, elevation: 1}, productBottle: {width: 22, height: 38, borderRadius: 5, backgroundColor: '#D9E6D4', marginRight: 11}, bottleCap: {position: 'absolute', alignSelf: 'center', top: -5, width: 13, height: 6, borderRadius: 2, backgroundColor: '#AABBA4'}, ownedCopy: {flex: 1}, ownedCategory: {fontSize: 8, color: '#7B877D'}, ownedName: {fontSize: 11, color: '#39463C', fontWeight: '800', marginTop: 3}, ownedFunction: {fontSize: 8, color: '#69906E', marginTop: 5}, ownedStatus: {fontSize: 9, color: '#4D875B', fontWeight: '800', backgroundColor: '#EEF6EC', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 10}, ownedInactiveStatus: {color: '#7A847B', backgroundColor: '#F1F2F0'}, calendarCard: {marginTop: 22, borderRadius: 16, padding: 14, backgroundColor: '#FFF', shadowColor: '#758075', shadowOpacity: .08, shadowOffset: {width: 0, height: 3}, shadowRadius: 9, elevation: 2}, calendarHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, calendarTitle: {fontSize: 14, fontWeight: '900', color: '#374239'}, monthText: {fontSize: 10, color: '#758078'}, weekdayRow: {flexDirection: 'row', marginTop: 16}, weekday: {flex: 1, textAlign: 'center', fontSize: 9, color: '#889188'}, daysGrid: {flexDirection: 'row', flexWrap: 'wrap', marginTop: 7}, dayCell: {width: '14.285%', height: 36, alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: 10}, selectedDayCell: {backgroundColor: '#4D875B'}, dayNumber: {fontSize: 10, color: '#526053'}, selectedDayNumber: {color: '#FFF', fontWeight: '800'}, recordDot: {position: 'absolute', bottom: 4, width: 4, height: 4, borderRadius: 2}, greenTone: {backgroundColor: '#62A06E'}, orangeTone: {backgroundColor: '#F1CB70'}, mintTone: {backgroundColor: '#A8CDA2'}, grayTone: {backgroundColor: '#B8C0B9'}, legendRow: {flexDirection: 'row', gap: 11, marginTop: 10}, legend: {flexDirection: 'row', alignItems: 'center'}, legendDot: {width: 7, height: 7, borderRadius: 4, marginRight: 4}, legendText: {fontSize: 8, color: '#7D877E'}, recordCard: {minHeight: 65, marginTop: 13, borderRadius: 14, backgroundColor: '#F3F7F1', padding: 12, flexDirection: 'row', alignItems: 'center'}, recordIcon: {width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginRight: 10}, recordIconText: {fontSize: 14, color: '#FFF', fontWeight: '800'}, recordCopy: {flex: 1}, recordTitle: {fontSize: 11, color: '#405243', fontWeight: '800'}, recordText: {fontSize: 9, color: '#778278', marginTop: 5}, bottomNav: {height: 62, borderRadius: 15, backgroundColor: '#FFF', marginHorizontal: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', shadowColor: '#758075', shadowOpacity: .07, shadowOffset: {width: 0, height: 2}, shadowRadius: 8, elevation: 2}, navItem: {alignItems: 'center', minWidth: 48}, navIcon: {fontSize: 20, color: '#98A29A'}, aiNavIcon: {width: 19, height: 17, borderRadius: 7, borderWidth: 1.4, borderColor: '#98A29A', alignItems: 'center', justifyContent: 'center', marginTop: 1}, aiNavIconActive: {borderColor: '#3E8754', backgroundColor: '#F3F8F2'}, aiAntenna: {position: 'absolute', top: -5, width: 1, height: 4, backgroundColor: '#98A29A'}, aiEyes: {fontSize: 8, lineHeight: 9, color: '#98A29A', fontWeight: '800'}, aiEyesActive: {color: '#3E8754'}, navLabel: {fontSize: 9, color: '#98A29A', marginTop: 2}, navActive: {color: '#3E8754', fontWeight: '800'},
+});
