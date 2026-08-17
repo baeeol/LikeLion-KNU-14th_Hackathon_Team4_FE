@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Pressable, SafeAreaView, StatusBar, StyleSheet, Text, View} from 'react-native';
 import {BrandLogo} from '../components/common/BrandLogo';
 import {Navigate} from '../navigation/types';
+import {DailyRoutine, getUserRoutines, RoutineApiProduct} from '../api/routine';
 
 type RoutineProduct = {
   category: string;
@@ -23,12 +24,10 @@ const EVENING_ROUTINE = MORNING_ROUTINE.slice(0, 4).map(product => ({
   name: product.category === '세럼' ? '진정 세럼' : product.name,
 }));
 
-const WEEKLY_ROUTINE = [
-  {day: '월', dayIndex: 1, routine: '장벽', tone: 'green'}, {day: '화', dayIndex: 2, routine: '각질', tone: 'orange'},
-  {day: '수', dayIndex: 3, routine: '진정', tone: 'mint'}, {day: '목', dayIndex: 4, routine: '수분', tone: 'green'},
-  {day: '금', dayIndex: 5, routine: '각질', tone: 'orange'}, {day: '토', dayIndex: 6, routine: '진정', tone: 'mint'},
-  {day: '일', dayIndex: 0, routine: '휴식', tone: 'gray'},
-];
+const FALLBACK_ROUTINES: DailyRoutine[] = Array.from({length: 7}, () => ({
+  morning: MORNING_ROUTINE.map(({category, name}, index) => ({id: index + 1, category, name})),
+  evening: EVENING_ROUTINE.map(({category, name}, index) => ({id: index + 11, category, name})),
+}));
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -36,8 +35,11 @@ function formatToday(date: Date) {
   return `${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAY_LABELS[date.getDay()]})`;
 }
 
-export function HomeScreen({navigate}: {navigate: Navigate}) {
+type AddedRoutineProduct = {id: number; category: string; name: string};
+
+export function HomeScreen({navigate, addedRoutineProduct}: {navigate: Navigate; addedRoutineProduct?: AddedRoutineProduct | null}) {
   const [today, setToday] = useState(() => new Date());
+  const [routines, setRoutines] = useState<DailyRoutine[]>(FALLBACK_ROUTINES);
 
   useEffect(() => {
     const timer = setInterval(() => setToday(new Date()), 60 * 1000);
@@ -45,13 +47,20 @@ export function HomeScreen({navigate}: {navigate: Navigate}) {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    getUserRoutines(1).then(apiRoutines => setRoutines(addProductToRoutine(apiRoutines, addedRoutineProduct))).catch(() => {
+      // 백엔드 연결 전에는 데모 루틴을 보여줍니다.
+      setRoutines(currentRoutines => addProductToRoutine(currentRoutines, addedRoutineProduct));
+    });
+  }, [addedRoutineProduct]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FBFCF9" />
       <View style={styles.page}>
         <View style={styles.screen}>
           <HomeHeader />
-          <RoutineSummary todayLabel={formatToday(today)} />
+          <RoutineSummary todayLabel={formatToday(today)} routines={routines} />
         </View>
         <View style={styles.fixedShortcutArea}><ShortcutSection navigate={navigate} /></View>
         <BottomNavigation navigate={navigate} />
@@ -60,42 +69,56 @@ export function HomeScreen({navigate}: {navigate: Navigate}) {
   );
 }
 
+function addProductToRoutine(routines: DailyRoutine[], product?: AddedRoutineProduct | null) {
+  if (!product) return routines;
+  return routines.map(day => {
+    const alreadyIncluded = [...day.morning, ...day.evening].some(item => item.id === product.id || item.name === product.name);
+    return alreadyIncluded ? day : {...day, evening: [...day.evening, product]};
+  });
+}
+
 function HomeHeader() {
   return <><View style={styles.topRow}><View style={styles.logoWrap}><BrandLogo /></View><Text style={styles.notification}>♧</Text></View><View style={styles.welcomeRow}><View><Text style={styles.welcome}>안녕하세요, 준영님 🌿</Text><Text style={styles.welcomeSub}>오늘의 피부에 가장 좋은 선택을 해주세요.</Text></View></View></>;
 }
 
-function RoutineSummary({todayLabel}: {todayLabel: string}) {
+function RoutineSummary({todayLabel, routines}: {todayLabel: string; routines: DailyRoutine[]}) {
   const [tab, setTab] = useState<'morning' | 'evening'>('morning');
   const todayIndex = new Date().getDay();
   const [selectedDayIndex, setSelectedDayIndex] = useState(todayIndex);
-  const selectedSchedule = WEEKLY_ROUTINE.find(item => item.dayIndex === selectedDayIndex) ?? WEEKLY_ROUTINE[0];
-  const routine = getRoutineForDay(selectedSchedule.routine, tab);
-  const routineDate = selectedDayIndex === todayIndex ? todayLabel : `${selectedSchedule.day}요일 루틴`;
-  return <><View style={styles.routineCard}><View style={styles.routineHeader}><View style={styles.titleRow}><RoutineIcon /><Text style={styles.routineTitle}>내 루틴</Text><Text style={styles.routineDate}>{routineDate}</Text></View><View style={styles.tabRow}><RoutineTab label="☼ 아침" active={tab === 'morning'} onPress={() => setTab('morning')} /><RoutineTab label="☾ 저녁" active={tab === 'evening'} onPress={() => setTab('evening')} /></View></View>{routine.map((product, index) => <RoutineItem key={`${product.name}-${index}`} index={index + 1} product={product} isLast={index === routine.length - 1} />)}<View style={styles.tipRow}><Text style={styles.tipIcon}>☀</Text><Text style={styles.tipText}>{selectedSchedule.routine} 루틴 TIP  ·  피부 상태에 맞춰 자극 없이 관리해요.</Text></View></View><WeeklySchedule selectedDayIndex={selectedDayIndex} onSelectDay={setSelectedDayIndex} /></>;
+  const selectedRoutine = getRoutineForWeekday(routines, selectedDayIndex);
+  const routine = (tab === 'morning' ? selectedRoutine.morning : selectedRoutine.evening).map(toRoutineProduct);
+  const routineDate = selectedDayIndex === todayIndex ? todayLabel : `${WEEKDAY_LABELS[selectedDayIndex]}요일 루틴`;
+  return <><View style={styles.routineCard}><View style={styles.routineHeader}><View style={styles.titleRow}><RoutineIcon /><Text style={styles.routineTitle}>내 루틴</Text><Text style={styles.routineDate}>{routineDate}</Text></View><View style={styles.tabRow}><RoutineTab label="☼ 아침" active={tab === 'morning'} onPress={() => setTab('morning')} /><RoutineTab label="☾ 저녁" active={tab === 'evening'} onPress={() => setTab('evening')} /></View></View>{routine.map((product, index) => <RoutineItem key={`${product.name}-${index}`} index={index + 1} product={product} isLast={index === routine.length - 1} />)}<View style={styles.tipRow}>{tab === 'morning' ? <Text style={styles.tipIcon}>☀</Text> : <MoonIcon />}<Text style={styles.tipText}>{tab === 'morning' ? '아침' : '저녁'} 루틴  ·  현재 등록된 제품 순서예요.</Text></View></View><WeeklySchedule routines={routines} selectedDayIndex={selectedDayIndex} onSelectDay={setSelectedDayIndex} /></>;
 }
 
-function getRoutineForDay(routineType: string, tab: 'morning' | 'evening') {
-  const routine = tab === 'morning' ? MORNING_ROUTINE : EVENING_ROUTINE;
-  if (routineType === '각질') return routine.map(product => product.category === '토너' ? {...product, name: 'AHA 각질 케어 토너', tone: '#F0DCAD'} : product);
-  if (routineType === '진정') return routine.map(product => product.category === '세럼' ? {...product, name: '판테놀 진정 세럼', tone: '#B8D3AF'} : product);
-  if (routineType === '장벽') return routine.map(product => product.category === '수분크림' ? {...product, name: '세라마이드 장벽 크림', tone: '#CEDBC8'} : product);
-  if (routineType === '수분') return routine.map(product => product.category === '수분크림' ? {...product, name: '히알루론산 수분 크림', tone: '#DCE3CF'} : product);
-  return routine.filter(product => product.category !== '세럼');
-}
+function getRoutineForWeekday(routines: DailyRoutine[], dayIndex: number) { return routines[(dayIndex + 6) % 7] ?? {morning: [], evening: []}; }
+function toRoutineProduct(product: RoutineApiProduct): RoutineProduct { const lowerCategory = product.category.toLowerCase(); const shape = lowerCategory.includes('크림') ? 'jar' : lowerCategory.includes('선') ? 'tube' : lowerCategory.includes('세럼') || lowerCategory.includes('앰플') ? 'dropper' : 'bottle'; return {category: product.category, name: product.name, tone: '#D9E6D4', shape}; }
 
 function RoutineIcon() { return <View style={styles.routineIcon}><View style={styles.routineIconBottle}><View style={styles.routineIconCap} /></View></View>; }
+function MoonIcon() { return <View style={styles.moonIcon}><View style={styles.moonCutout} /></View>; }
 function RoutineTab({label, active, onPress}: {label: string; active: boolean; onPress: () => void}) { return <Pressable onPress={onPress} style={[styles.tab, active && styles.activeTab]}><Text style={[styles.tabLabel, active && styles.activeTabLabel]}>{label}</Text></Pressable>; }
 
 function RoutineItem({index, product, isLast}: {index: number; product: RoutineProduct; isLast: boolean}) {
   const shape = product.shape === 'jar' ? styles.jar : product.shape === 'tube' ? styles.tube : product.shape === 'dropper' ? styles.dropper : styles.bottle;
-  return <View style={styles.routineItem}><View style={styles.orderColumn}><View style={styles.orderNumber}><Text style={styles.orderNumberText}>{index}</Text></View>{!isLast && <View style={styles.orderLine} />}</View><View style={styles.productShapeArea}><View style={[styles.productShape, shape, {backgroundColor: product.tone}]}>{product.shape === 'dropper' && <View style={styles.dropperCap} />}{product.shape === 'bottle' && <View style={styles.bottleCap} />}</View></View><View style={styles.itemTextWrap}><Text style={styles.itemCategory}>{product.category}</Text><Text style={styles.itemName}>{product.name}</Text></View><View style={styles.statusPill}><Text style={styles.statusText}>● 유지</Text></View><Text style={styles.itemArrow}>›</Text></View>;
+  return <View style={styles.routineItem}><View style={styles.orderColumn}><View style={styles.orderNumber}><Text style={styles.orderNumberText}>{index}</Text></View>{!isLast && <View style={styles.orderLine} />}</View><View style={styles.productShapeArea}><View style={[styles.productShape, shape, {backgroundColor: product.tone}]}>{product.shape === 'dropper' && <View style={styles.dropperCap} />}{product.shape === 'bottle' && <View style={styles.bottleCap} />}</View></View><View style={styles.itemTextWrap}><Text style={styles.itemCategory}>{product.category}</Text><Text style={styles.itemName}>{product.name}</Text></View></View>;
 }
 
-function WeeklySchedule({selectedDayIndex, onSelectDay}: {selectedDayIndex: number; onSelectDay: (dayIndex: number) => void}) {
-  return <View style={styles.weeklyCard}><View style={styles.weeklyHeader}><View style={styles.weeklyTitleWrap}><Text style={styles.calendarIcon}>▣</Text><Text style={styles.weeklyTitle}>주간 스케줄</Text></View></View><View style={styles.scheduleRow}>{WEEKLY_ROUTINE.map(item => <Pressable key={item.day} onPress={() => onSelectDay(item.dayIndex)} style={[styles.dayColumn, selectedDayIndex === item.dayIndex && styles.dayColumnSelected]}><Text style={styles.dayText}>{item.day}</Text><View style={[styles.scheduleTag, scheduleTone(item.tone)]}><Text style={styles.scheduleTagText}>{item.routine}</Text></View></Pressable>)}</View><View style={styles.legendRow}><Legend color="#69A174" label="수분·장벽" /><Legend color="#F0D278" label="각질 관리" /><Legend color="#B9D8B1" label="진정" /><Legend color="#CDD1CD" label="휴식/회복" /></View></View>;
+function WeeklySchedule({routines, selectedDayIndex, onSelectDay}: {routines: DailyRoutine[]; selectedDayIndex: number; onSelectDay: (dayIndex: number) => void}) {
+  return <View style={styles.weeklyCard}><View style={styles.weeklyHeader}><View style={styles.weeklyTitleWrap}><Text style={styles.calendarIcon}>▣</Text><Text style={styles.weeklyTitle}>주간 스케줄</Text></View></View><View style={styles.scheduleRow}>{[1, 2, 3, 4, 5, 6, 0].map(dayIndex => { const routine = getRoutineForWeekday(routines, dayIndex); const label = getWeeklyFunctionLabel(routines, routine); return <Pressable key={dayIndex} onPress={() => onSelectDay(dayIndex)} style={[styles.dayColumn, selectedDayIndex === dayIndex && styles.dayColumnSelected]}><Text style={styles.dayText}>{WEEKDAY_LABELS[dayIndex]}</Text><View style={[styles.scheduleTag, scheduleTagStyle(label)]}><Text style={styles.scheduleTagText}>{label}</Text></View></Pressable>; })}</View><View style={styles.legendRow}><Legend color="#69A174" label="기능성 루틴" /><Legend color="#CDD1CD" label="기본·휴식 루틴" /></View></View>;
 }
 
-function scheduleTone(tone: string) { if (tone === 'green') return styles.greenTag; if (tone === 'orange') return styles.orangeTag; if (tone === 'mint') return styles.mintTag; return styles.grayTag; }
+function getWeeklyFunctionLabel(routines: DailyRoutine[], routine: DailyRoutine) {
+  const functionalProduct = [...routine.morning, ...routine.evening].find(product => {
+    const functionName = getFunctionName(product.name);
+    const usedDays = routines.filter(day => [...day.morning, ...day.evening].some(item => item.id === product.id || item.name === product.name)).length;
+    return Boolean(functionName) && usedDays < 7;
+  });
+  if (!functionalProduct) return routine.morning.length + routine.evening.length ? '기본' : '휴식';
+  return getFunctionName(functionalProduct.name);
+}
+
+function getFunctionName(name: string) { if (/AHA|BHA|각질/i.test(name)) return '각질'; if (/레티놀/i.test(name)) return '레티놀'; if (/비타민\s?C|나이아신/i.test(name)) return '미백·톤'; if (/판테놀|시카|진정/i.test(name)) return '진정'; return ''; }
+function scheduleTagStyle(label: string) { if (label === '각질' || label === '레티놀') return styles.orangeTag; if (label === '진정') return styles.mintTag; if (label === '휴식') return styles.grayTag; return styles.greenTag; }
 function Legend({color, label}: {color: string; label: string}) { return <View style={styles.legend}><View style={[styles.legendDot, {backgroundColor: color}]} /><Text style={styles.legendText}>{label}</Text></View>; }
 
 function ShortcutSection({navigate}: {navigate: Navigate}) {
@@ -111,7 +134,7 @@ function AiNavIcon({active}: {active: boolean}) { return <View style={[styles.ai
 const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FBFCF9'}, page: {flex: 1}, screen: {flex: 1, paddingHorizontal: 12, paddingTop: 40, paddingBottom: 10}, topRow: {height: 42, marginHorizontal: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, logoWrap: {}, notification: {fontSize: 22, color: '#43815B'}, welcomeRow: {height: 80, justifyContent: 'center', paddingLeft: 12}, welcome: {fontSize: 21, color: '#2D3830', fontWeight: '800', letterSpacing: -0.7}, welcomeSub: {fontSize: 11, color: '#929B93', marginTop: 5},
   routineCard: {backgroundColor: '#FFF', borderRadius: 16, paddingVertical: 5, marginTop: 12, shadowColor: '#758075', shadowOpacity: 0.08, shadowOffset: {width: 0, height: 3}, shadowRadius: 9, elevation: 2}, routineHeader: {paddingHorizontal: 13, paddingTop: 12, paddingBottom: 10}, titleRow: {flexDirection: 'row', alignItems: 'center'}, routineTitle: {fontSize: 18, color: '#303932', fontWeight: '900', letterSpacing: -0.8}, routineDate: {fontSize: 10, color: '#89938B', fontWeight: '600', marginLeft: 8, marginTop: 2}, routineIcon: {width: 18, height: 26, marginRight: 8, position: 'relative'}, routineIconBottle: {position: 'absolute', left: 4, bottom: 1, width: 10, height: 20, borderRadius: 3, backgroundColor: '#AEC5A9'}, routineIconCap: {position: 'absolute', top: -4, alignSelf: 'center', width: 6, height: 5, borderRadius: 2, backgroundColor: '#6F8C70'}, tabRow: {flexDirection: 'row', gap: 6, marginTop: 10}, tab: {height: 39, flex: 1, borderRadius: 13, borderWidth: 1, borderColor: '#E0E5DF', alignItems: 'center', justifyContent: 'center'}, activeTab: {borderColor: '#4D885E', backgroundColor: '#F7FCF6'}, tabLabel: {fontSize: 11, color: '#767F78'}, activeTabLabel: {color: '#437F55', fontWeight: '800'},
-  routineItem: {height: 58, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, borderTopWidth: 1, borderTopColor: '#EFF1EE'}, orderColumn: {width: 27, height: 58, alignItems: 'center', paddingTop: 10}, orderNumber: {width: 23, height: 23, borderRadius: 12, backgroundColor: '#F3F6F1', alignItems: 'center', justifyContent: 'center'}, orderNumberText: {fontSize: 11, color: '#68736A', fontWeight: '800'}, orderLine: {width: 1, height: 17, borderLeftWidth: 1, borderStyle: 'dotted', borderColor: '#B7C1B7', marginTop: 3}, productShapeArea: {width: 50, alignItems: 'center'}, productShape: {}, bottle: {width: 15, height: 31, borderRadius: 4}, dropper: {width: 15, height: 28, borderRadius: 4, marginTop: 5}, jar: {width: 29, height: 23, borderRadius: 5, marginTop: 8}, tube: {width: 19, height: 29, borderRadius: 4, marginTop: 3}, bottleCap: {position: 'absolute', top: -5, alignSelf: 'center', width: 11, height: 6, borderRadius: 2, backgroundColor: '#ECF0E9'}, dropperCap: {position: 'absolute', top: -9, alignSelf: 'center', width: 9, height: 10, borderRadius: 4, backgroundColor: '#728070'}, itemTextWrap: {flex: 1}, itemCategory: {fontSize: 8, color: '#7D8780'}, itemName: {fontSize: 12, color: '#303A32', fontWeight: '800', marginTop: 4}, statusPill: {backgroundColor: '#F0F6EE', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 6}, statusText: {fontSize: 9, color: '#438052', fontWeight: '800'}, itemArrow: {fontSize: 22, color: '#8E978F', marginLeft: 9}, tipRow: {height: 31, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16}, tipIcon: {fontSize: 17, color: '#EDA450', marginRight: 7}, tipText: {fontSize: 8, color: '#858D85'},
+  routineItem: {height: 58, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, borderTopWidth: 1, borderTopColor: '#EFF1EE'}, orderColumn: {width: 27, height: 58, alignItems: 'center', paddingTop: 10}, orderNumber: {width: 23, height: 23, borderRadius: 12, backgroundColor: '#F3F6F1', alignItems: 'center', justifyContent: 'center'}, orderNumberText: {fontSize: 11, color: '#68736A', fontWeight: '800'}, orderLine: {width: 1, height: 17, borderLeftWidth: 1, borderStyle: 'dotted', borderColor: '#B7C1B7', marginTop: 3}, productShapeArea: {width: 50, alignItems: 'center'}, productShape: {}, bottle: {width: 15, height: 31, borderRadius: 4}, dropper: {width: 15, height: 28, borderRadius: 4, marginTop: 5}, jar: {width: 29, height: 23, borderRadius: 5, marginTop: 8}, tube: {width: 19, height: 29, borderRadius: 4, marginTop: 3}, bottleCap: {position: 'absolute', top: -5, alignSelf: 'center', width: 11, height: 6, borderRadius: 2, backgroundColor: '#ECF0E9'}, dropperCap: {position: 'absolute', top: -9, alignSelf: 'center', width: 9, height: 10, borderRadius: 4, backgroundColor: '#728070'}, itemTextWrap: {flex: 1}, itemCategory: {fontSize: 8, color: '#7D8780'}, itemName: {fontSize: 12, color: '#303A32', fontWeight: '800', marginTop: 4}, tipRow: {height: 31, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16}, tipIcon: {fontSize: 17, color: '#EDA450', marginRight: 7}, moonIcon: {width: 15, height: 15, borderRadius: 8, backgroundColor: '#EDA450', overflow: 'hidden', marginRight: 9}, moonCutout: {position: 'absolute', width: 14, height: 14, borderRadius: 7, backgroundColor: '#FFFFFF', top: -2, left: 5}, tipText: {fontSize: 8, color: '#858D85'},
   weeklyCard: {backgroundColor: '#FFF', borderRadius: 16, padding: 14, marginTop: 12, shadowColor: '#758075', shadowOpacity: 0.08, shadowOffset: {width: 0, height: 3}, shadowRadius: 9, elevation: 2}, weeklyHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, weeklyTitleWrap: {flexDirection: 'row', alignItems: 'center'}, calendarIcon: {fontSize: 18, color: '#4E8B5D', marginRight: 8}, weeklyTitle: {fontSize: 13, color: '#364239', fontWeight: '800'}, weeklyLink: {fontSize: 8, color: '#7C877E'}, scheduleRow: {flexDirection: 'row', gap: 4, marginTop: 15}, dayColumn: {height: 51, flex: 1, borderRadius: 8, borderWidth: 1, borderColor: '#E5E9E4', alignItems: 'center', paddingTop: 6}, dayColumnSelected: {borderColor: '#4D875B', borderWidth: 1.5, backgroundColor: '#F8FCF7'}, dayText: {fontSize: 10, color: '#59645B', fontWeight: '800'}, scheduleTag: {borderRadius: 7, paddingHorizontal: 4, paddingVertical: 4, marginTop: 6}, scheduleTagText: {fontSize: 8, fontWeight: '800'}, greenTag: {backgroundColor: '#E5F1E4'}, orangeTag: {backgroundColor: '#FFF4DE'}, mintTag: {backgroundColor: '#EEF6EA'}, grayTag: {backgroundColor: '#F1F2F1'}, legendRow: {flexDirection: 'row', gap: 10, marginTop: 10}, legend: {flexDirection: 'row', alignItems: 'center'}, legendDot: {width: 8, height: 8, borderRadius: 4, marginRight: 4}, legendText: {fontSize: 8, color: '#7A837B'},
   fixedShortcutArea: {paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10, backgroundColor: '#FBFCF9'}, shortcutRow: {flexDirection: 'row', gap: 8}, shortcut: {flex: 1, minHeight: 68, borderRadius: 13, padding: 10, flexDirection: 'row', alignItems: 'center'}, searchShortcut: {backgroundColor: '#F0F5EE'}, sosShortcut: {backgroundColor: '#FFF3E8'}, shortcutIcon: {width: 27, height: 27, borderRadius: 14, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', marginRight: 7}, shortcutIconText: {fontSize: 18, color: '#47765B'}, shortcutTitle: {fontSize: 11, fontWeight: '800', color: '#546259'}, shortcutText: {fontSize: 8, lineHeight: 11, color: '#8A958B', marginTop: 3}, shortcutArrow: {position: 'absolute', right: 8, color: '#7F8C82', fontSize: 18},
   bottomNav: {height: 62, backgroundColor: '#FFF', borderRadius: 15, marginHorizontal: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', shadowColor: '#758075', shadowOpacity: 0.07, shadowOffset: {width: 0, height: 2}, shadowRadius: 8, elevation: 2}, navItem: {alignItems: 'center', minWidth: 48}, navIcon: {fontSize: 20, color: '#98A29A'}, aiNavIcon: {width: 19, height: 17, borderRadius: 7, borderWidth: 1.4, borderColor: '#98A29A', alignItems: 'center', justifyContent: 'center', marginTop: 1}, aiNavIconActive: {borderColor: '#3E8754', backgroundColor: '#F3F8F2'}, aiAntenna: {position: 'absolute', top: -5, width: 1, height: 4, backgroundColor: '#98A29A'}, aiEyes: {fontSize: 8, lineHeight: 9, color: '#98A29A', fontWeight: '800'}, aiEyesActive: {color: '#3E8754'}, navLabel: {fontSize: 9, color: '#98A29A', marginTop: 2}, navActive: {color: '#3E8754', fontWeight: '800'},

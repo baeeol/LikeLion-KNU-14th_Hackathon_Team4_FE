@@ -6,6 +6,11 @@ export type AppScreen =
 
 export type NavigationParams = {
   consultQuestion?: string;
+  routineProduct?: {
+    id: number;
+    category: string;
+    name: string;
+  };
 };
 
 export type Navigate = (screen: AppScreen, params?: NavigationParams) => void;
