@@ -358,10 +358,6 @@ function ConsultHero({onBack}: {onBack: () => void}) {
   return <View style={styles.hero}><View><View style={styles.heroTitleRow}><TouchableOpacity accessibilityRole="button" accessibilityLabel="홈으로 돌아가기" activeOpacity={0.6} hitSlop={{top: 12, bottom: 12, left: 12, right: 12}} onPress={onBack} style={styles.heroBackButton}><Text style={styles.heroBackIcon}>‹</Text></TouchableOpacity><Text style={styles.heroTitle}>AI 루틴 상담</Text></View><Text style={styles.heroDescription}>피부 고민을 알려주시면{`\n`}현재 루틴을 바탕으로 조정안을 제안해드려요.</Text></View><RobotIllustration /></View>;
 }
 
-function IntroMessage() {
-  return <View style={styles.introMessage}><RobotAvatar /><Text style={styles.introText}>현재 루틴을 기준으로{`\n`}원인을 함께 찾아볼게요.  ✧</Text></View>;
-}
-
 function BotMessage({children, time}: {children: React.ReactNode; time?: string}) {
   return <View style={styles.botRow}><RobotAvatar small /><View style={styles.botBubble}>{children}</View>{time && <Text style={styles.time}>{time}</Text>}</View>;
 }
@@ -370,37 +366,9 @@ function UserMessage({text, time}: {text: string; time: string}) {
   return <View style={styles.userRow}><View style={styles.userBubble}><Text style={styles.userText}>{text}</Text></View><Text style={styles.time}>{time}</Text><Text style={styles.readMark}>✓✓</Text></View>;
 }
 
-function RoutineCheckCard() {
-  return <View style={styles.checkCard}><Text style={styles.checkTitle}>최근 달라진 점</Text><View style={styles.checkTags}><CheckTag label="세럼 추가"/><CheckTag label="사용 빈도 증가"/><CheckTag label="같은 날 함께 사용"/></View></View>;
-}
-
-function CheckTag({label}: {label: string}) {
-  return <View style={styles.checkTag}><Text style={styles.checkTagIcon}>✓</Text><Text style={styles.checkTagText}>{label}</Text></View>;
-}
-
-function SuggestionCard() {
-  return <View style={styles.suggestionCard}><View style={styles.suggestionTextWrap}><Text style={styles.suggestionKicker}>우선 조정해볼 항목</Text><Text style={styles.suggestionTitle}>AHA 토너를 7일 동안 쉬어보세요.</Text><SuggestionPoint text="나머지 기본 루틴은 유지"/><SuggestionPoint text="붉어짐과 따가움 변화 체크"/><SuggestionPoint text="레티놀은 주 2회만 유지"/><View style={styles.reason}><Text style={styles.reasonText}>추천 이유: 자극 가능성 높은 조합</Text></View></View><RestIllustration /></View>;
-}
-
-function SuggestionPoint({text}: {text: string}) {return <View style={styles.suggestionPoint}><Text style={styles.suggestionPointIcon}>●</Text><Text style={styles.suggestionPointText}>{text}</Text></View>;}
-
-function ActionButtons({accepted, onAccept}: {accepted: boolean; onAccept: () => void}) {
-  return <View style={styles.actionRow}><Pressable onPress={onAccept} style={[styles.primaryAction, accepted && styles.acceptedAction]}><Text style={styles.primaryActionText}>{accepted ? '✓ 제안 적용됨' : '◉ 제안 적용하기'}</Text></Pressable><Pressable style={styles.secondaryAction}><Text style={styles.secondaryActionText}>☷ 다른 조정안 보기</Text></Pressable><Pressable style={styles.keepAction}><Text style={styles.keepActionText}>그대로 유지</Text></Pressable></View>;
-}
-
-function QuickQuestions() {
-  return <View style={styles.quickRow}><View style={styles.quickQuestion}><Text style={styles.quickIcon}>♧</Text><Text style={styles.quickText}>건조함도 있어요</Text></View><View style={styles.quickQuestion}><Text style={styles.quickIcon}>▯</Text><Text style={styles.quickText}>최근 바꾼 제품 보기</Text></View></View>;
-}
-
-function NextCheckCard() {
-  return <View style={styles.nextCheck}><Text style={styles.calendarIcon}>▦</Text><View style={styles.nextCheckTextWrap}><Text style={styles.nextCheckTitle}>다음 체크 예정</Text><Text style={styles.nextCheckText}>3일 후 피부 상태를 다시 확인할게요.</Text></View><Text style={styles.nextArrow}>›</Text></View>;
-}
-
 function RobotAvatar({small = false}: {small?: boolean}) {return <Image source={require('../assets/images/ai-chat-avatar.png')} resizeMode="contain" style={[styles.robotAvatar, small && styles.smallRobotAvatar]} />;}
 
 function RobotIllustration() {return <Image source={require('../assets/images/ai-consult-illustration.png')} resizeMode="contain" style={styles.robotIllustration} />;}
-
-function RestIllustration() {return <View style={styles.restIllustration}><View style={styles.daysCard}><Text style={styles.daysNumber}>7</Text><Text style={styles.daysLabel}>DAYS</Text></View><View style={styles.restBottleOne}/><View style={styles.restBottleTwo}/><Text style={styles.restLeaf}>❘</Text></View>;}
 
 const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FFFDF9'}, page: {flex: 1}, screen: {flex: 1, paddingHorizontal: 24, paddingTop: 40}, chatScroll: {flex: 1, marginTop: 8}, chatContent: {paddingBottom: 18},

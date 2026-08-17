@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {Pressable, SafeAreaView, StatusBar, StyleSheet, Text, View} from 'react-native';
 import {BrandLogo} from '../components/common/BrandLogo';
+import {BottomNavigation} from '../components/common/BottomNavigation';
 import {Navigate} from '../navigation/types';
 import {DailyRoutine, getUserRoutines, RoutineApiProduct} from '../api/routine';
 
@@ -63,7 +64,7 @@ export function HomeScreen({navigate, addedRoutineProduct}: {navigate: Navigate;
           <RoutineSummary todayLabel={formatToday(today)} routines={routines} />
         </View>
         <View style={styles.fixedShortcutArea}><ShortcutSection navigate={navigate} /></View>
-        <BottomNavigation navigate={navigate} />
+        <BottomNavigation activeScreen="home" navigate={navigate} />
       </View>
     </SafeAreaView>
   );
@@ -126,10 +127,6 @@ function ShortcutSection({navigate}: {navigate: Navigate}) {
 }
 
 function ShortcutCard({icon, title, description, variant, onPress}: {icon: string; title: string; description: string; variant: 'search' | 'sos'; onPress: () => void}) { return <Pressable onPress={onPress} style={[styles.shortcut, variant === 'search' ? styles.searchShortcut : styles.sosShortcut]}><View style={styles.shortcutIcon}><Text style={styles.shortcutIconText}>{icon}</Text></View><View><Text style={styles.shortcutTitle}>{title}</Text><Text style={styles.shortcutText}>{description}</Text></View><Text style={styles.shortcutArrow}>›</Text></Pressable>; }
-
-function BottomNavigation({navigate}: {navigate: Navigate}) { return <View style={styles.bottomNav}><NavItem icon="⌂" label="홈" active /><NavItem icon="ai" label="AI 상담" onPress={() => navigate('routineConsult')} /><NavItem icon="⌕" label="제품 찾기" onPress={() => navigate('productExplore')} /><NavItem icon="♙" label="마이페이지" onPress={() => navigate('myPage')} /></View>; }
-function NavItem({icon, label, active = false, onPress}: {icon: string; label: string; active?: boolean; onPress?: () => void}) { return <Pressable onPress={onPress} style={styles.navItem}>{icon === 'ai' ? <AiNavIcon active={active} /> : <Text style={[styles.navIcon, active && styles.navActive]}>{icon}</Text>}<Text style={[styles.navLabel, active && styles.navActive]}>{label}</Text></Pressable>; }
-function AiNavIcon({active}: {active: boolean}) { return <View style={[styles.aiNavIcon, active && styles.aiNavIconActive]}><View style={styles.aiAntenna} /><Text style={[styles.aiEyes, active && styles.aiEyesActive]}>• •</Text></View>; }
 
 const styles = StyleSheet.create({
   safeArea: {flex: 1, backgroundColor: '#FBFCF9'}, page: {flex: 1}, screen: {flex: 1, paddingHorizontal: 12, paddingTop: 40, paddingBottom: 10}, topRow: {height: 42, marginHorizontal: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, logoWrap: {}, notification: {fontSize: 22, color: '#43815B'}, welcomeRow: {height: 80, justifyContent: 'center', paddingLeft: 12}, welcome: {fontSize: 21, color: '#2D3830', fontWeight: '800', letterSpacing: -0.7}, welcomeSub: {fontSize: 11, color: '#929B93', marginTop: 5},
