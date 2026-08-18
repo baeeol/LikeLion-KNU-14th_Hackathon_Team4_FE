@@ -15,6 +15,8 @@ import {
 import {Navigate} from '../navigation/types';
 import {BrandLogo} from '../components/common/BrandLogo';
 import {CareProduct, searchCareProducts} from '../api/careProduct';
+import {getTroubleSolution, questionNewProduct} from '../api/routineConsult';
+import {DailyRoutine} from '../api/routine';
 
 type ChatMessage = {
   id: number;
@@ -27,12 +29,14 @@ type TroubleSolution = {
   title: string;
   description: string;
   steps: string[];
+  routines?: DailyRoutine[];
 };
 
 type ProductConsultationResult = {
   product: CareProduct;
   isSuitable: boolean;
   reason: string;
+  routines?: DailyRoutine[];
 };
 
 const FALLBACK_RECOMMENDED_PRODUCT: CareProduct = {
@@ -100,7 +104,7 @@ function getProductFromQuestion(question: string): CareProduct {
   return {...FALLBACK_RECOMMENDED_PRODUCT, id: Date.now(), name: name || FALLBACK_RECOMMENDED_PRODUCT.name};
 }
 
-export function RoutineConsultScreen({navigate, initialQuestion = '', onQuestionHandled}: {navigate: Navigate; initialQuestion?: string; onQuestionHandled?: () => void}) {
+export function RoutineConsultScreen({navigate, initialQuestion = '', initialProductId, onQuestionHandled}: {navigate: Navigate; initialQuestion?: string; initialProductId?: number | null; onQuestionHandled?: () => void}) {
   const [message, setMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [awaitingTroubleDetail, setAwaitingTroubleDetail] = useState(false);
@@ -110,6 +114,7 @@ export function RoutineConsultScreen({navigate, initialQuestion = '', onQuestion
   const [troubleSolutionMessageId, setTroubleSolutionMessageId] = useState<number | null>(null);
   const [recommendedProduct, setRecommendedProduct] = useState<CareProduct | null>(null);
   const [productUnderReview, setProductUnderReview] = useState<CareProduct | null>(null);
+  const [productIdUnderReview, setProductIdUnderReview] = useState<number | null>(null);
   const [productResult, setProductResult] = useState<ProductConsultationResult | null>(null);
   const [productResultMessageId, setProductResultMessageId] = useState<number | null>(null);
   const chatScrollRef = useRef<ScrollView>(null);
@@ -124,8 +129,9 @@ export function RoutineConsultScreen({navigate, initialQuestion = '', onQuestion
     }
 
     setMessage(initialQuestion);
+    setProductIdUnderReview(initialProductId ?? null);
     onQuestionHandled?.();
-  }, [initialQuestion, onQuestionHandled]);
+  }, [initialProductId, initialQuestion, onQuestionHandled]);
 
   const sendMessage = () => {
     const trimmedMessage = message.trim();
@@ -139,27 +145,31 @@ export function RoutineConsultScreen({navigate, initialQuestion = '', onQuestion
       sender: 'user',
       text: trimmedMessage,
     };
-    const questionProduct = productUnderReview ?? (trimmedMessage.includes('현재 루틴에 잘 맞을까요') ? getProductFromQuestion(trimmedMessage) : null);
+    const questionProduct = productUnderReview ?? (productIdUnderReview ? {
+      ...FALLBACK_RECOMMENDED_PRODUCT,
+      id: productIdUnderReview,
+      name: trimmedMessage.replace(/\s*제품이\s*제\s*피부와\s*현재\s*루틴에\s*잘\s*맞을까요\?\s*$/, '').trim() || '선택한 제품',
+    } : null);
 
     if (questionProduct) {
       setChatMessages(currentMessages => [...currentMessages, userMessage]);
       setProductUnderReview(null);
+      setProductIdUnderReview(null);
       setProductResult(null);
       setIsAnalyzingProduct(true);
 
       setTimeout(() => {
-        const result = createProductConsultationResult(questionProduct);
-        const botMessage: ChatMessage = {
-          id: userMessage.id + 1,
-          sender: 'bot',
-          text: result.isSuitable
-            ? '이 제품은 현재 루틴에 추가하는 것을 추천드려요. 보습·진정 중심의 루틴을 해치지 않으면서 부족한 기능을 보완해줘요.'
-            : '이 제품은 현재 루틴에는 비추천드려요. 사용 중인 기능성 제품과 겹쳐 피부 부담이 커질 수 있어요.',
-        };
-        setChatMessages(currentMessages => [...currentMessages, botMessage]);
-        setProductResult(result);
-        setProductResultMessageId(botMessage.id);
-        setIsAnalyzingProduct(false);
+        void questionNewProduct(1, questionProduct.id).then(response => {
+          const result: ProductConsultationResult = response.canJoinNow
+            ? {product: questionProduct, isSuitable: true, routines: response.routines, reason: '현재 루틴에 추가해도 제품 간 충돌이 확인되지 않았어요.'}
+            : {product: questionProduct, isSuitable: false, reason: response.conflict.conflictMsg};
+          const botMessage: ChatMessage = {id: userMessage.id + 1, sender: 'bot', text: result.isSuitable ? '분석 결과, 이 제품은 현재 루틴에 추가해도 좋아요.' : '분석 결과, 현재 루틴에는 추가하지 않는 편이 좋아요.'};
+          setChatMessages(currentMessages => [...currentMessages, botMessage]);
+          setProductResult(result);
+          setProductResultMessageId(botMessage.id);
+        }).catch(() => {
+          setChatMessages(currentMessages => [...currentMessages, {id: userMessage.id + 1, sender: 'bot', text: '제품 적합도를 분석하지 못했어요. 잠시 후 다시 시도해주세요.'}]);
+        }).finally(() => setIsAnalyzingProduct(false));
       }, 3000);
     } else if (awaitingTroubleDetail) {
       setChatMessages(currentMessages => [...currentMessages, userMessage]);
@@ -167,21 +177,18 @@ export function RoutineConsultScreen({navigate, initialQuestion = '', onQuestion
       setIsAnalyzingTrouble(true);
 
       setTimeout(() => {
-        const solution = createTroubleSolution(trimmedMessage);
-        const botMessage: ChatMessage = {
-          id: userMessage.id + 1,
-          sender: 'bot',
-          text: '입력해주신 트러블 유형과 현재 보유 제품을 기준으로 조정안을 준비했어요.',
-        };
-        setChatMessages(currentMessages => [...currentMessages, botMessage]);
-        setTroubleSolution(solution);
-        setTroubleSolutionMessageId(botMessage.id);
-        if (!solution.canUseOwnedProducts) {
-          void searchCareProducts(getRecommendationKeyword(trimmedMessage))
-            .then(products => setRecommendedProduct(products[0] ?? FALLBACK_RECOMMENDED_PRODUCT))
-            .catch(() => setRecommendedProduct(FALLBACK_RECOMMENDED_PRODUCT));
-        }
-        setIsAnalyzingTrouble(false);
+        void getTroubleSolution(1, trimmedMessage).then(response => {
+          const solution: TroubleSolution = response.canSolveNow
+            ? {canUseOwnedProducts: true, routines: response.routines, title: '보유 제품으로 조정할 수 있어요', description: '현재 보유 제품을 기준으로 트러블 케어 루틴을 새로 구성했어요.', steps: ['자극 가능성이 있는 제품 사용일을 조정했어요.', '수정된 일주일 루틴을 확인해보세요.']}
+            : {canUseOwnedProducts: false, title: '추가 제품으로 보완이 필요해요', description: '현재 보유 제품만으로는 해결하기 어려운 상태예요.', steps: ['AI가 현재 고민에 맞는 제품을 추천했어요.']};
+          const botMessage: ChatMessage = {id: userMessage.id + 1, sender: 'bot', text: '입력해주신 트러블과 현재 보유 제품을 기준으로 조정안을 준비했어요.'};
+          setChatMessages(currentMessages => [...currentMessages, botMessage]);
+          setTroubleSolution(solution);
+          setTroubleSolutionMessageId(botMessage.id);
+          setRecommendedProduct(response.canSolveNow ? null : response.product);
+        }).catch(() => {
+          setChatMessages(currentMessages => [...currentMessages, {id: userMessage.id + 1, sender: 'bot', text: '트러블 해결 루틴을 불러오지 못했어요. 잠시 후 다시 시도해주세요.'}]);
+        }).finally(() => setIsAnalyzingTrouble(false));
       }, 3000);
     } else {
       const botMessage: ChatMessage = {id: userMessage.id + 1, sender: 'bot', text: createBotReply(trimmedMessage)};
@@ -219,10 +226,10 @@ export function RoutineConsultScreen({navigate, initialQuestion = '', onQuestion
               <BotMessage time="방금"><Text style={styles.messageText}>{chatMessage.text}</Text></BotMessage>
             )}
             {troubleSolution && troubleSolutionMessageId === chatMessage.id && <>
-              <TroubleSolutionCard solution={troubleSolution} recommendedProduct={recommendedProduct} onCheckRoutine={() => navigate('home')} onAskProduct={product => { setProductUnderReview(product); setMessage(`${product.brand} ${product.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`); }} />
+              <TroubleSolutionCard solution={troubleSolution} recommendedProduct={recommendedProduct} onCheckRoutine={() => navigate('home', {routineOverride: troubleSolution.routines})} onAskProduct={product => { setProductUnderReview(product); setProductIdUnderReview(product.id); setMessage(`${product.brand} ${product.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`); }} />
               <BotMessage><Text style={styles.messageText}>상담이 종료되었습니다.{`\n`}추가 상담이 필요하다면 ‘트러블 상담’ 버튼을 다시 눌러주세요.</Text></BotMessage>
             </>}
-          {productResult && productResultMessageId === chatMessage.id && <ProductConsultationCard result={productResult} onApply={() => navigate('home', {routineProduct: {id: productResult.product.id, category: productResult.product.category, name: productResult.product.name}, routineChange: createRoutineChangeRecord(productResult.product)})} />}
+          {productResult && productResultMessageId === chatMessage.id && <ProductConsultationCard result={productResult} onApply={() => navigate('home', {routineOverride: productResult.routines, routineChange: createRoutineChangeRecord(productResult.product)})} />}
           </React.Fragment>)}
           {isAnalyzingTrouble && <RoutineAnalyzingCard />}
           {isAnalyzingProduct && <ProductAnalyzingCard />}
@@ -268,7 +275,7 @@ function TroubleSolutionCard({solution, recommendedProduct, onCheckRoutine, onAs
     <Text style={styles.solutionTitle}>{solution.title}</Text>
     <Text style={styles.solutionDescription}>{solution.description}</Text>
     {solution.steps.map(step => <View key={step} style={styles.solutionStep}><Text style={styles.solutionDot}>●</Text><Text style={styles.solutionStepText}>{step}</Text></View>)}
-    {solution.canUseOwnedProducts && <TodayTroubleRoutineCard onPress={onCheckRoutine} />}
+    {solution.canUseOwnedProducts && solution.routines && <TodayTroubleRoutineCard routines={solution.routines} onPress={onCheckRoutine} />}
     {!solution.canUseOwnedProducts && recommendedProduct && <RecommendedProductCard product={recommendedProduct} onAskProduct={onAskProduct} />}
   </View>;
 }
@@ -325,7 +332,7 @@ function ProductConsultationCard({result, onApply}: {result: ProductConsultation
       <Text style={styles.newRoutineProduct}>+ {result.product.name}</Text>
       <Text style={styles.newRoutineLine}>→  수분 크림</Text>
     </View>
-    <Pressable onPress={onApply} style={styles.applyRoutineButton}><Text style={styles.applyRoutineButtonText}>이 루틴 적용하기</Text><Text style={styles.applyRoutineArrow}>›</Text></Pressable>
+    {result.routines && <Pressable onPress={onApply} style={styles.applyRoutineButton}><Text style={styles.applyRoutineButtonText}>이 루틴 적용하기</Text><Text style={styles.applyRoutineArrow}>›</Text></Pressable>}
   </View>;
 }
 
@@ -339,16 +346,22 @@ function createRoutineChangeRecord(product: CareProduct) {
   };
 }
 
-function TodayTroubleRoutineCard({onPress}: {onPress: () => void}) {
+function TodayTroubleRoutineCard({routines, onPress}: {routines: DailyRoutine[]; onPress: () => void}) {
+  const todayIndex = new Date().getDay();
+  const routine = routines[(todayIndex + 6) % 7] ?? {morning: [], evening: []};
   return <View style={styles.todayTroubleRoutine}>
     <View style={styles.todayTroubleHeader}>
       <Text style={styles.todayTroubleKicker}>오늘의 트러블 케어 루틴</Text>
       <Text style={styles.todayTroubleBadge}>조정됨</Text>
     </View>
-    <View style={styles.todayRoutineLine}><Text style={styles.todayRoutineTime}>AM</Text><Text style={styles.todayRoutineProducts}>약산성 클렌저  →  어성초 토너  →  수분 크림</Text></View>
-    <View style={styles.todayRoutineLine}><Text style={styles.todayRoutineTime}>PM</Text><Text style={styles.todayRoutineProducts}>약산성 클렌저  →  세라마이드 세럼  →  수분 크림</Text></View>
+    <View style={styles.todayRoutineLine}><Text style={styles.todayRoutineTime}>AM</Text><Text style={styles.todayRoutineProducts}>{formatRoutineNames(routine.morning)}</Text></View>
+    <View style={styles.todayRoutineLine}><Text style={styles.todayRoutineTime}>PM</Text><Text style={styles.todayRoutineProducts}>{formatRoutineNames(routine.evening)}</Text></View>
     <Pressable onPress={onPress} style={styles.checkRoutineButton}><Text style={styles.checkRoutineButtonText}>루틴 확인하기</Text><Text style={styles.checkRoutineArrow}>›</Text></Pressable>
   </View>;
+}
+
+function formatRoutineNames(products: DailyRoutine['morning']) {
+  return products.map(product => product.name).join('  →  ') || '등록된 제품 없음';
 }
 
 function RoutineAnalyzingCard() {

@@ -6,12 +6,14 @@ export type AppScreen =
 
 export type NavigationParams = {
   consultQuestion?: string;
+  consultProductId?: number;
   routineProduct?: {
     id: number;
     category: string;
     name: string;
   };
   routineChange?: RoutineChangeRecord;
+  routineOverride?: DailyRoutine[];
 };
 
 export type RoutineChangeRecord = {
@@ -23,3 +25,4 @@ export type RoutineChangeRecord = {
 };
 
 export type Navigate = (screen: AppScreen, params?: NavigationParams) => void;
+import {DailyRoutine} from '../api/routine';

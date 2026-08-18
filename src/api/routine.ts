@@ -4,6 +4,7 @@ export type RoutineApiProduct = {
   id: number;
   category: string;
   name: string;
+  volume?: number;
 };
 
 export type DailyRoutine = {

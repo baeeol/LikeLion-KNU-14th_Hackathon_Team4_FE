@@ -75,7 +75,7 @@ export function ProductExploreScreen({navigate}: {navigate: Navigate}) {
         {!isSearching && !searchError && query.trim() && visibleProducts.length === 0 && <Text style={styles.emptyText}>검색 결과가 없어요.</Text>}
         {!isSearching && !searchError && !query.trim() && <Text style={styles.emptyText}>제품 종류, 브랜드, 제품명을 검색해보세요.</Text>}
       </ScrollView>
-      {selectedProduct && <View style={[styles.selectedProductBox, {marginHorizontal: 12, marginBottom: 8}]}><View><Text style={styles.selectedLabel}>선택한 제품</Text><Text numberOfLines={1} style={styles.selectedName}>{selectedProduct.brand} {selectedProduct.name}</Text></View><Pressable onPress={() => navigate('routineConsult', {consultQuestion: `${selectedProduct.brand} ${selectedProduct.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`})} style={styles.consultButton}><Text style={styles.consultButtonText}>AI에게 물어보기  ›</Text></Pressable></View>}
+      {selectedProduct && <View style={[styles.selectedProductBox, {marginHorizontal: 12, marginBottom: 8}]}><View><Text style={styles.selectedLabel}>선택한 제품</Text><Text numberOfLines={1} style={styles.selectedName}>{selectedProduct.brand} {selectedProduct.name}</Text></View><Pressable onPress={() => navigate('routineConsult', {consultQuestion: `${selectedProduct.brand} ${selectedProduct.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`, consultProductId: selectedProduct.id})} style={styles.consultButton}><Text style={styles.consultButtonText}>AI에게 물어보기  ›</Text></Pressable></View>}
       <BottomNavigation activeScreen="productExplore" navigate={navigate} />
     </View>
   </SafeAreaView>;

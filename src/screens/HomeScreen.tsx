@@ -9,6 +9,7 @@ import {getUser} from '../api/user';
 type RoutineProduct = {
   category: string;
   name: string;
+  volume?: number;
   tone: string;
   shape: 'bottle' | 'dropper' | 'jar' | 'tube';
 };
@@ -39,7 +40,7 @@ function formatToday(date: Date) {
 
 type AddedRoutineProduct = {id: number; category: string; name: string};
 
-export function HomeScreen({navigate, addedRoutineProduct}: {navigate: Navigate; addedRoutineProduct?: AddedRoutineProduct | null}) {
+export function HomeScreen({navigate, addedRoutineProduct, routineOverride}: {navigate: Navigate; addedRoutineProduct?: AddedRoutineProduct | null; routineOverride?: DailyRoutine[] | null}) {
   const [today, setToday] = useState(() => new Date());
   const [routines, setRoutines] = useState<DailyRoutine[]>(FALLBACK_ROUTINES);
   const [nickname, setNickname] = useState('준영');
@@ -51,11 +52,15 @@ export function HomeScreen({navigate, addedRoutineProduct}: {navigate: Navigate;
   }, []);
 
   useEffect(() => {
+    if (routineOverride) {
+      setRoutines(routineOverride);
+      return;
+    }
     getUserRoutines(1).then(apiRoutines => setRoutines(addProductToRoutine(apiRoutines, addedRoutineProduct))).catch(() => {
       // 백엔드 연결 전에는 데모 루틴을 보여줍니다.
       setRoutines(currentRoutines => addProductToRoutine(currentRoutines, addedRoutineProduct));
     });
-  }, [addedRoutineProduct]);
+  }, [addedRoutineProduct, routineOverride]);
 
   useEffect(() => {
     getUser(1).then(user => setNickname(user.nickname)).catch(() => {
@@ -101,7 +106,7 @@ function RoutineSummary({todayLabel, routines}: {todayLabel: string; routines: D
 }
 
 function getRoutineForWeekday(routines: DailyRoutine[], dayIndex: number) { return routines[(dayIndex + 6) % 7] ?? {morning: [], evening: []}; }
-function toRoutineProduct(product: RoutineApiProduct): RoutineProduct { const lowerCategory = product.category.toLowerCase(); const shape = lowerCategory.includes('크림') ? 'jar' : lowerCategory.includes('선') ? 'tube' : lowerCategory.includes('세럼') || lowerCategory.includes('앰플') ? 'dropper' : 'bottle'; return {category: product.category, name: product.name, tone: '#D9E6D4', shape}; }
+function toRoutineProduct(product: RoutineApiProduct): RoutineProduct { const lowerCategory = product.category.toLowerCase(); const shape = lowerCategory.includes('크림') ? 'jar' : lowerCategory.includes('선') ? 'tube' : lowerCategory.includes('세럼') || lowerCategory.includes('앰플') ? 'dropper' : 'bottle'; return {category: product.category, name: product.name, volume: product.volume, tone: '#D9E6D4', shape}; }
 
 function RoutineIcon() { return <View style={styles.routineIcon}><View style={styles.routineIconBottle}><View style={styles.routineIconCap} /></View></View>; }
 function MoonIcon() { return <View style={styles.moonIcon}><View style={styles.moonCutout} /></View>; }
@@ -109,7 +114,7 @@ function RoutineTab({label, active, onPress}: {label: string; active: boolean; o
 
 function RoutineItem({index, product, isLast}: {index: number; product: RoutineProduct; isLast: boolean}) {
   const shape = product.shape === 'jar' ? styles.jar : product.shape === 'tube' ? styles.tube : product.shape === 'dropper' ? styles.dropper : styles.bottle;
-  return <View style={styles.routineItem}><View style={styles.orderColumn}><View style={styles.orderNumber}><Text style={styles.orderNumberText}>{index}</Text></View>{!isLast && <View style={styles.orderLine} />}</View><View style={styles.productShapeArea}><View style={[styles.productShape, shape, {backgroundColor: product.tone}]}>{product.shape === 'dropper' && <View style={styles.dropperCap} />}{product.shape === 'bottle' && <View style={styles.bottleCap} />}</View></View><View style={styles.itemTextWrap}><Text style={styles.itemCategory}>{product.category}</Text><Text style={styles.itemName}>{product.name}</Text></View></View>;
+  return <View style={styles.routineItem}><View style={styles.orderColumn}><View style={styles.orderNumber}><Text style={styles.orderNumberText}>{index}</Text></View>{!isLast && <View style={styles.orderLine} />}</View><View style={styles.productShapeArea}><View style={[styles.productShape, shape, {backgroundColor: product.tone}]}>{product.shape === 'dropper' && <View style={styles.dropperCap} />}{product.shape === 'bottle' && <View style={styles.bottleCap} />}</View></View><View style={styles.itemTextWrap}><View style={{flexDirection: 'row', alignItems: 'center'}}><Text style={styles.itemCategory}>{product.category}</Text>{typeof product.volume === 'number' && <Text style={[styles.itemCategory, {marginLeft: 6, color: '#628466'}]}>사용량 {product.volume}ml</Text>}</View><Text style={styles.itemName}>{product.name}</Text></View></View>;
 }
 
 function WeeklySchedule({routines, selectedDayIndex, onSelectDay}: {routines: DailyRoutine[]; selectedDayIndex: number; onSelectDay: (dayIndex: number) => void}) {
