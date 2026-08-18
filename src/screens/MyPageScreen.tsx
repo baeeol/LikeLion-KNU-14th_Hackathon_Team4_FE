@@ -66,7 +66,7 @@ export function MyPageScreen({navigate, routineChanges = []}: {navigate: Navigat
         <Text style={styles.description}>내 피부와 보유 제품을 확인해보세요.</Text>
 
         <View style={styles.profileCard}>
-          <View style={styles.profileAvatar}><Text style={styles.avatarText}>준</Text></View>
+          <View style={styles.profileAvatar}><Text style={styles.avatarText}></Text></View>
           <View><Text style={styles.nickname}>{user.nickname}님</Text><Text style={styles.age}>{user.age}세 · 루틴을 시작한 지 14일째</Text></View>
         </View>
 

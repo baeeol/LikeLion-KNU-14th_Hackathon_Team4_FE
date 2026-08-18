@@ -4,6 +4,7 @@ import {BrandLogo} from '../components/common/BrandLogo';
 import {BottomNavigation} from '../components/common/BottomNavigation';
 import {Navigate} from '../navigation/types';
 import {DailyRoutine, getUserRoutines, RoutineApiProduct} from '../api/routine';
+import {getUser} from '../api/user';
 
 type RoutineProduct = {
   category: string;
@@ -41,6 +42,7 @@ type AddedRoutineProduct = {id: number; category: string; name: string};
 export function HomeScreen({navigate, addedRoutineProduct}: {navigate: Navigate; addedRoutineProduct?: AddedRoutineProduct | null}) {
   const [today, setToday] = useState(() => new Date());
   const [routines, setRoutines] = useState<DailyRoutine[]>(FALLBACK_ROUTINES);
+  const [nickname, setNickname] = useState('준영');
 
   useEffect(() => {
     const timer = setInterval(() => setToday(new Date()), 60 * 1000);
@@ -55,12 +57,18 @@ export function HomeScreen({navigate, addedRoutineProduct}: {navigate: Navigate;
     });
   }, [addedRoutineProduct]);
 
+  useEffect(() => {
+    getUser(1).then(user => setNickname(user.nickname)).catch(() => {
+      // 네트워크 오류 시에도 기존 인사말을 유지합니다.
+    });
+  }, []);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FBFCF9" />
       <View style={styles.page}>
         <View style={styles.screen}>
-          <HomeHeader />
+          <HomeHeader nickname={nickname} />
           <RoutineSummary todayLabel={formatToday(today)} routines={routines} />
         </View>
         <View style={styles.fixedShortcutArea}><ShortcutSection navigate={navigate} /></View>
@@ -78,8 +86,8 @@ function addProductToRoutine(routines: DailyRoutine[], product?: AddedRoutinePro
   });
 }
 
-function HomeHeader() {
-  return <><View style={styles.topRow}><View style={styles.logoWrap}><BrandLogo /></View><Text style={styles.notification}>♧</Text></View><View style={styles.welcomeRow}><View><Text style={styles.welcome}>안녕하세요, 준영님 🌿</Text><Text style={styles.welcomeSub}>오늘의 피부에 가장 좋은 선택을 해주세요.</Text></View></View></>;
+function HomeHeader({nickname}: {nickname: string}) {
+  return <><View style={styles.topRow}><View style={styles.logoWrap}><BrandLogo /></View><Text style={styles.notification}>♧</Text></View><View style={styles.welcomeRow}><View><Text style={styles.welcome}>안녕하세요, {nickname}님 🌿</Text><Text style={styles.welcomeSub}>오늘의 피부에 가장 좋은 선택을 해주세요.</Text></View></View></>;
 }
 
 function RoutineSummary({todayLabel, routines}: {todayLabel: string; routines: DailyRoutine[]}) {
