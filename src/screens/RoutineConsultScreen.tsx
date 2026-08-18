@@ -222,7 +222,7 @@ export function RoutineConsultScreen({navigate, initialQuestion = '', onQuestion
               <TroubleSolutionCard solution={troubleSolution} recommendedProduct={recommendedProduct} onCheckRoutine={() => navigate('home')} onAskProduct={product => { setProductUnderReview(product); setMessage(`${product.brand} ${product.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`); }} />
               <BotMessage><Text style={styles.messageText}>상담이 종료되었습니다.{`\n`}추가 상담이 필요하다면 ‘트러블 상담’ 버튼을 다시 눌러주세요.</Text></BotMessage>
             </>}
-            {productResult && productResultMessageId === chatMessage.id && <ProductConsultationCard result={productResult} onApply={() => navigate('home', {routineProduct: {id: productResult.product.id, category: productResult.product.category, name: productResult.product.name}})} />}
+          {productResult && productResultMessageId === chatMessage.id && <ProductConsultationCard result={productResult} onApply={() => navigate('home', {routineProduct: {id: productResult.product.id, category: productResult.product.category, name: productResult.product.name}, routineChange: createRoutineChangeRecord(productResult.product)})} />}
           </React.Fragment>)}
           {isAnalyzingTrouble && <RoutineAnalyzingCard />}
           {isAnalyzingProduct && <ProductAnalyzingCard />}
@@ -327,6 +327,16 @@ function ProductConsultationCard({result, onApply}: {result: ProductConsultation
     </View>
     <Pressable onPress={onApply} style={styles.applyRoutineButton}><Text style={styles.applyRoutineButtonText}>이 루틴 적용하기</Text><Text style={styles.applyRoutineArrow}>›</Text></Pressable>
   </View>;
+}
+
+function createRoutineChangeRecord(product: CareProduct) {
+  return {
+    id: `routine-change-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    title: 'AI 추천 제품 추가',
+    detail: `${product.name}을(를) 저녁 루틴에 추가했어요.`,
+    tone: 'green' as const,
+  };
 }
 
 function TodayTroubleRoutineCard({onPress}: {onPress: () => void}) {

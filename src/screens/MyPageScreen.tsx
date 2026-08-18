@@ -2,7 +2,7 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View} from 'react-native';
 import {BrandLogo} from '../components/common/BrandLogo';
 import {BottomNavigation} from '../components/common/BottomNavigation';
-import {Navigate} from '../navigation/types';
+import {Navigate, RoutineChangeRecord} from '../navigation/types';
 import {getUser, SkinType, User} from '../api/user';
 import {getUserCareProducts, OwnedCareProduct} from '../api/careProduct';
 
@@ -21,7 +21,9 @@ const RECORDS: Record<number, {title: string; detail: string; tone: 'green' | 'o
 };
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-export function MyPageScreen({navigate}: {navigate: Navigate}) {
+type CalendarRecord = Pick<RoutineChangeRecord, 'title' | 'detail' | 'tone'>;
+
+export function MyPageScreen({navigate, routineChanges = []}: {navigate: Navigate; routineChanges?: RoutineChangeRecord[]}) {
   const today = new Date();
   const [selectedDay, setSelectedDay] = useState(today.getDate());
   const [user, setUser] = useState<User>(FALLBACK_USER);
@@ -32,7 +34,19 @@ export function MyPageScreen({navigate}: {navigate: Navigate}) {
     const lastDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
     return [...Array(firstDay).fill(null), ...Array.from({length: lastDate}, (_, index) => index + 1)];
   }, [today]);
-  const selectedRecord = RECORDS[selectedDay];
+  const recordsByDay = useMemo<Record<number, CalendarRecord>>(() => {
+    const currentMonthChanges = routineChanges.filter(change => {
+      const date = new Date(change.createdAt);
+      return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth();
+    });
+
+    return currentMonthChanges.reduce<Record<number, CalendarRecord>>((records, change) => {
+      const changeDate = new Date(change.createdAt);
+      records[changeDate.getDate()] = change;
+      return records;
+    }, {...RECORDS});
+  }, [routineChanges, today]);
+  const selectedRecord = recordsByDay[selectedDay];
 
   useEffect(() => {
     getUser(1).then(setUser).catch(() => {
@@ -63,7 +77,7 @@ export function MyPageScreen({navigate}: {navigate: Navigate}) {
         <View style={styles.calendarCard}>
           <View style={styles.calendarHeader}><Text style={styles.calendarTitle}>루틴 변화 기록</Text><Text style={styles.monthText}>{monthLabel}</Text></View>
           <View style={styles.weekdayRow}>{WEEKDAYS.map(day => <Text key={day} style={styles.weekday}>{day}</Text>)}</View>
-          <View style={styles.daysGrid}>{calendarDays.map((day, index) => day ? <Pressable key={day} onPress={() => setSelectedDay(day)} style={[styles.dayCell, selectedDay === day && styles.selectedDayCell]}><Text style={[styles.dayNumber, selectedDay === day && styles.selectedDayNumber]}>{day}</Text>{RECORDS[day] && <View style={[styles.recordDot, recordTone(RECORDS[day].tone)]} />}</Pressable> : <View key={`blank-${index}`} style={styles.dayCell} />)}</View>
+          <View style={styles.daysGrid}>{calendarDays.map((day, index) => day ? <Pressable key={day} onPress={() => setSelectedDay(day)} style={[styles.dayCell, selectedDay === day && styles.selectedDayCell]}><Text style={[styles.dayNumber, selectedDay === day && styles.selectedDayNumber]}>{day}</Text>{recordsByDay[day] && <View style={[styles.recordDot, recordTone(recordsByDay[day].tone)]} />}</Pressable> : <View key={`blank-${index}`} style={styles.dayCell} />)}</View>
           <View style={styles.legendRow}><Legend color="#62A06E" label="장벽·수분" /><Legend color="#F1CB70" label="각질 관리" /><Legend color="#A8CDA2" label="진정" /></View>
         </View>
         <View style={styles.recordCard}><View style={[styles.recordIcon, selectedRecord ? recordTone(selectedRecord.tone) : styles.grayTone]}><Text style={styles.recordIconText}>✓</Text></View><View style={styles.recordCopy}>{selectedRecord ? <><Text style={styles.recordTitle}>{selectedDay}일 · {selectedRecord.title}</Text><Text style={styles.recordText}>{selectedRecord.detail}</Text></> : <><Text style={styles.recordTitle}>{selectedDay}일 · 기록 없음</Text><Text style={styles.recordText}>이날은 기본 루틴을 유지했어요.</Text></>}</View></View>
