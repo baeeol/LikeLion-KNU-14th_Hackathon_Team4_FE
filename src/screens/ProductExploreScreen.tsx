@@ -1,9 +1,9 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Alert, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, View} from 'react-native';
 import {BrandLogo} from '../components/common/BrandLogo';
 import {BottomNavigation} from '../components/common/BottomNavigation';
 import {Navigate} from '../navigation/types';
-import {CareProduct, searchCareProducts} from '../api/careProduct';
+import {addUserCareProduct, CareProduct, searchCareProducts} from '../api/careProduct';
 
 const FILTERS = ['전체', '세정', '보습', '피부 장벽', '진정', '각질 케어', '트러블·피지', '미백·톤', '자외선 차단'] as const;
 
@@ -75,7 +75,7 @@ export function ProductExploreScreen({navigate}: {navigate: Navigate}) {
         {!isSearching && !searchError && query.trim() && visibleProducts.length === 0 && <Text style={styles.emptyText}>검색 결과가 없어요.</Text>}
         {!isSearching && !searchError && !query.trim() && <Text style={styles.emptyText}>제품 종류, 브랜드, 제품명을 검색해보세요.</Text>}
       </ScrollView>
-      {selectedProduct && <View style={[styles.selectedProductBox, {marginHorizontal: 12, marginBottom: 8}]}><View><Text style={styles.selectedLabel}>선택한 제품</Text><Text numberOfLines={1} style={styles.selectedName}>{selectedProduct.brand} {selectedProduct.name}</Text></View><Pressable onPress={() => navigate('routineConsult', {consultQuestion: `${selectedProduct.brand} ${selectedProduct.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`, consultProductId: selectedProduct.id})} style={styles.consultButton}><Text style={styles.consultButtonText}>AI에게 물어보기  ›</Text></Pressable></View>}
+      {selectedProduct && <View style={[styles.selectedProductBox, {marginHorizontal: 12, marginBottom: 8}]}><View><Text style={styles.selectedLabel}>선택한 제품</Text><Text numberOfLines={1} style={styles.selectedName}>{selectedProduct.brand} {selectedProduct.name}</Text></View><View style={{flexDirection: 'row', gap: 8, marginTop: 10}}><Pressable onPress={() => navigate('routineConsult', {consultQuestion: `${selectedProduct.brand} ${selectedProduct.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`, consultProductId: selectedProduct.id})} style={[styles.consultButton, {flex: 1, marginTop: 0}]}><Text style={styles.consultButtonText}>AI에게 물어보기  ›</Text></Pressable><Pressable onPress={async () => { try { await addUserCareProduct(1, selectedProduct.id); navigate('myPage', {ownedProduct: {id: selectedProduct.id, category: selectedProduct.category, brand: selectedProduct.brand, name: selectedProduct.name}}); } catch { Alert.alert('추가하지 못했어요', '잠시 후 다시 시도해주세요.'); } }} style={[styles.consultButton, {flex: 0.48, marginTop: 0, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#4D875B'}]}><Text style={[styles.consultButtonText, {color: '#3F7C51'}]}>구매하기</Text></Pressable></View></View>}
       <BottomNavigation activeScreen="productExplore" navigate={navigate} />
     </View>
   </SafeAreaView>;

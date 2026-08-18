@@ -1,18 +1,13 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View} from 'react-native';
+import {Alert, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View} from 'react-native';
 import {BrandLogo} from '../components/common/BrandLogo';
 import {BottomNavigation} from '../components/common/BottomNavigation';
 import {Navigate, RoutineChangeRecord} from '../navigation/types';
 import {getUser, SkinType, User} from '../api/user';
-import {getUserCareProducts, OwnedCareProduct} from '../api/careProduct';
+import {deleteUserCareProduct, getUserCareProducts, OwnedCareProduct} from '../api/careProduct';
 
 const SKIN_TYPES: SkinType[] = ['건성', '지성', '복합성', '수부지'];
 const FALLBACK_USER: User = {id: 1, nickname: '준영', age: 24, skinType: {type: '수부지'}};
-const FALLBACK_PRODUCTS: OwnedCareProduct[] = [
-  {id: 1, category: '토너', brand: '아누아', name: '어성초 77% 수딩 토너', usedInRoutine: true},
-  {id: 2, category: '세럼', brand: '일리윤', name: '세라마이드 아토 세럼', usedInRoutine: true},
-  {id: 3, category: '크림', brand: '라운드랩', name: '자작나무 수분 크림', usedInRoutine: false},
-];
 const RECORDS: Record<number, {title: string; detail: string; tone: 'green' | 'orange' | 'mint'}> = {
   3: {title: '장벽 루틴 강화', detail: '세라마이드 크림을 추가했어요.', tone: 'green'},
   7: {title: '각질 케어 조정', detail: 'AHA 토너 사용을 주 2회로 줄였어요.', tone: 'orange'},
@@ -23,11 +18,12 @@ const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 type CalendarRecord = Pick<RoutineChangeRecord, 'title' | 'detail' | 'tone'>;
 
-export function MyPageScreen({navigate, routineChanges = []}: {navigate: Navigate; routineChanges?: RoutineChangeRecord[]}) {
+export function MyPageScreen({navigate, routineChanges = [], purchasedProducts = [], onRemovePurchasedProduct}: {navigate: Navigate; routineChanges?: RoutineChangeRecord[]; purchasedProducts?: OwnedCareProduct[]; onRemovePurchasedProduct: (productId: number) => void}) {
   const today = new Date();
   const [selectedDay, setSelectedDay] = useState(today.getDate());
   const [user, setUser] = useState<User>(FALLBACK_USER);
-  const [ownedProducts, setOwnedProducts] = useState<OwnedCareProduct[]>(FALLBACK_PRODUCTS);
+  const [ownedProducts, setOwnedProducts] = useState<OwnedCareProduct[]>([]);
+  const [serverProductIds, setServerProductIds] = useState<number[]>([]);
   const monthLabel = `${today.getFullYear()}년 ${today.getMonth() + 1}월`;
   const calendarDays = useMemo(() => {
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
@@ -52,10 +48,17 @@ export function MyPageScreen({navigate, routineChanges = []}: {navigate: Navigat
     getUser(1).then(setUser).catch(() => {
       // 백엔드 연결 전에도 해커톤 데모 화면은 기본 정보로 유지합니다.
     });
-    getUserCareProducts(1).then(setOwnedProducts).catch(() => {
-      // 백엔드 연결 전에는 데모 제품을 보여줍니다.
+    getUserCareProducts(1).then(products => {
+      setServerProductIds(products.map(product => product.id));
+      setOwnedProducts(currentProducts => mergeOwnedProducts(products, currentProducts));
+    }).catch(() => {
+      // 보유 제품 API가 준비되기 전에는 구매한 제품만 표시합니다.
     });
   }, []);
+
+  useEffect(() => {
+    setOwnedProducts(currentProducts => mergeOwnedProducts(currentProducts, purchasedProducts));
+  }, [purchasedProducts]);
 
   return <SafeAreaView style={styles.safeArea}>
     <StatusBar barStyle="dark-content" backgroundColor="#FBFCF9" />
@@ -84,14 +87,18 @@ export function MyPageScreen({navigate, routineChanges = []}: {navigate: Navigat
 
         <View style={styles.ownedHeader}><Text style={styles.sectionTitle}>보유 제품</Text><Text style={styles.productCount}>{ownedProducts.length}개</Text></View>
         <Text style={styles.ownedDescription}>현재 루틴에 등록된 제품이에요.</Text>
-        <View style={styles.ownedList}>{ownedProducts.map(product => <OwnedProductCard key={product.id} product={product} />)}</View>
+        <View style={styles.ownedList}>{ownedProducts.map(product => <OwnedProductCard key={product.id} product={product} onDelete={async () => { if (!serverProductIds.includes(product.id)) { setOwnedProducts(currentProducts => currentProducts.filter(item => item.id !== product.id)); onRemovePurchasedProduct(product.id); return; } try { await deleteUserCareProduct(1, product.id); setOwnedProducts(currentProducts => currentProducts.filter(item => item.id !== product.id)); onRemovePurchasedProduct(product.id); } catch { Alert.alert('삭제하지 못했어요', '잠시 후 다시 시도해주세요.'); } }} />)}</View>
       </ScrollView>
       <BottomNavigation activeScreen="myPage" navigate={navigate} />
     </View>
   </SafeAreaView>;
 }
 
-function OwnedProductCard({product}: {product: OwnedCareProduct}) {return <View style={styles.ownedProduct}><View style={styles.productBottle}><View style={styles.bottleCap} /></View><View style={styles.ownedCopy}><Text style={styles.ownedCategory}>{product.category}</Text><Text style={styles.ownedName}>{product.brand} {product.name}</Text><Text style={styles.ownedFunction}>{product.usedInRoutine ? '현재 루틴에 사용 중인 제품' : '아직 루틴에 넣지 않은 제품'}</Text></View><Text style={[styles.ownedStatus, !product.usedInRoutine && styles.ownedInactiveStatus]}>{product.usedInRoutine ? '루틴 사용 중' : '보유 중'}</Text></View>;}
+function mergeOwnedProducts(baseProducts: OwnedCareProduct[], addedProducts: OwnedCareProduct[]) {
+  return [...baseProducts, ...addedProducts.filter(product => !baseProducts.some(item => item.id === product.id))];
+}
+
+function OwnedProductCard({product, onDelete}: {product: OwnedCareProduct; onDelete: () => void}) {return <View style={styles.ownedProduct}><View style={styles.productBottle}><View style={styles.bottleCap} /></View><View style={styles.ownedCopy}><Text style={styles.ownedCategory}>{product.category}</Text><Text style={styles.ownedName}>{product.brand} {product.name}</Text><Text style={styles.ownedFunction}>{product.usedInRoutine ? '현재 루틴에 사용 중인 제품' : '아직 루틴에 넣지 않은 제품'}</Text></View><View style={{alignItems: 'flex-end', gap: 6}}><Text style={[styles.ownedStatus, !product.usedInRoutine && styles.ownedInactiveStatus]}>{product.usedInRoutine ? '루틴 사용 중' : '보유 중'}</Text><Pressable onPress={onDelete} hitSlop={8}><Text style={{fontSize: 8, color: '#9A665D'}}>삭제</Text></Pressable></View></View>;}
 function Legend({color, label}: {color: string; label: string}) {return <View style={styles.legend}><View style={[styles.legendDot, {backgroundColor: color}]} /><Text style={styles.legendText}>{label}</Text></View>;}
 function recordTone(tone: 'green' | 'orange' | 'mint') {return tone === 'orange' ? styles.orangeTone : tone === 'mint' ? styles.mintTone : styles.greenTone;}
 const styles = StyleSheet.create({

@@ -18,11 +18,11 @@ export type OwnedCareProduct = {
   category: string;
   brand: string;
   name: string;
-  usedInRoutine: boolean;
+  usedInRoutine?: boolean;
 };
 
 type OwnedCareProductResponse = {
-  products: OwnedCareProduct[];
+  products: OwnedCareProduct[] | OwnedCareProduct;
 };
 
 export async function searchCareProducts(keyword: string): Promise<CareProduct[]> {
@@ -44,5 +44,25 @@ export async function getUserCareProducts(userId: number): Promise<OwnedCareProd
   }
 
   const data = (await response.json()) as OwnedCareProductResponse;
-  return data.products;
+  return Array.isArray(data.products) ? data.products : [data.products];
+}
+
+export async function addUserCareProduct(userId: number, careProductId: number) {
+  const response = await fetch(`${API_BASE_URL}/user/${userId}/care_product`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({careProductId}),
+  });
+
+  if (!response.ok) throw new Error('보유 제품을 추가하지 못했습니다.');
+}
+
+export async function deleteUserCareProduct(userId: number, careProductId: number) {
+  const response = await fetch(`${API_BASE_URL}/user/${userId}/care_product`, {
+    method: 'DELETE',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({careProductId}),
+  });
+
+  if (!response.ok) throw new Error('보유 제품을 삭제하지 못했습니다.');
 }

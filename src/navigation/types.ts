@@ -14,6 +14,12 @@ export type NavigationParams = {
   };
   routineChange?: RoutineChangeRecord;
   routineOverride?: DailyRoutine[];
+  ownedProduct?: {
+    id: number;
+    category: string;
+    brand: string;
+    name: string;
+  };
 };
 
 export type RoutineChangeRecord = {
