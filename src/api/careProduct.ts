@@ -26,7 +26,7 @@ type OwnedCareProductResponse = {
 };
 
 export async function searchCareProducts(keyword: string): Promise<CareProduct[]> {
-  const response = await fetch(`${API_BASE_URL}/care_product?keyword=${encodeURIComponent(keyword)}`);
+  const response = await fetch(`${API_BASE_URL}/care_products?keyword=${encodeURIComponent(keyword)}`);
 
   if (!response.ok) {
     throw new Error('제품을 검색하지 못했습니다.');

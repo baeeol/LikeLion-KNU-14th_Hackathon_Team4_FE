@@ -13,9 +13,9 @@ type UserResponse = {
   user: User;
 };
 
-// Android 에뮬레이터에서 내 컴퓨터의 백엔드 서버에 접속하는 주소입니다.
-// 백엔드 포트가 다르거나 실제 기기에서 테스트할 때는 이 주소만 변경하세요.
-export const API_BASE_URL = 'http://10.0.2.2:8080';
+// 가비아에 배포된 백엔드 서버의 공통 주소입니다.
+// 모든 API 요청은 이 주소 뒤에 엔드포인트를 붙여 호출합니다.
+export const API_BASE_URL = 'http://1.201.117.50:3000';
 
 export async function getUser(userId: number): Promise<User> {
   const response = await fetch(`${API_BASE_URL}/user/${userId}`);

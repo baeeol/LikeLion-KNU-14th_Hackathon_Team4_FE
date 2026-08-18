@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Debug 빌드에서만 Metro와 로컬 HTTP 개발 서버를 허용합니다. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
