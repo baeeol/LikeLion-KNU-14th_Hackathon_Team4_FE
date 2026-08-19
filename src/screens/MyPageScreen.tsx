@@ -22,6 +22,7 @@ import {
   getUserCareProducts,
   OwnedCareProduct,
 } from '../api/careProduct';
+import { DailyRoutine, generateRoutineFromOwnedProducts } from '../api/routine';
 
 const FALLBACK_USER: User = {
   id: 1,
@@ -74,6 +75,10 @@ export function MyPageScreen({
   const [user, setUser] = useState<User>(FALLBACK_USER);
   const [ownedProducts, setOwnedProducts] = useState<OwnedCareProduct[]>([]);
   const [serverProductIds, setServerProductIds] = useState<number[]>([]);
+  const [isGeneratingRoutine, setIsGeneratingRoutine] = useState(false);
+  const [generatedRoutine, setGeneratedRoutine] = useState<
+    DailyRoutine[] | null
+  >(null);
   const monthLabel = `${today.getFullYear()}년 ${today.getMonth() + 1}월`;
   const calendarDays = useMemo(() => {
     const firstDay = new Date(
@@ -134,6 +139,29 @@ export function MyPageScreen({
       mergeOwnedProducts(currentProducts, purchasedProducts),
     );
   }, [purchasedProducts]);
+
+  const generateRoutine = async () => {
+    if (!ownedProducts.length) {
+      Alert.alert(
+        '보유 제품이 없어요',
+        '제품을 추가한 뒤 루틴을 생성해주세요.',
+      );
+      return;
+    }
+
+    try {
+      setIsGeneratingRoutine(true);
+      const routines = await generateRoutineFromOwnedProducts(1);
+      setGeneratedRoutine(routines);
+    } catch {
+      Alert.alert(
+        '루틴을 생성하지 못했어요',
+        '서버 연결을 확인한 뒤 다시 시도해주세요.',
+      );
+    } finally {
+      setIsGeneratingRoutine(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -300,6 +328,57 @@ export function MyPageScreen({
               />
             ))}
           </View>
+          <Pressable
+            disabled={isGeneratingRoutine}
+            onPress={generateRoutine}
+            style={[
+              styles.createRoutineButton,
+              isGeneratingRoutine && styles.createRoutineButtonDisabled,
+            ]}
+          >
+            <Text style={styles.createRoutineButtonText}>
+              {isGeneratingRoutine
+                ? 'AI가 루틴을 생성하고 있어요...'
+                : '보유 제품으로 루틴 생성하기'}
+            </Text>
+            <Text style={styles.createRoutineButtonArrow}>›</Text>
+          </Pressable>
+          {generatedRoutine && (
+            <View style={styles.generatedRoutineCard}>
+              <View style={styles.generatedRoutineIcon}>
+                <Text style={styles.generatedRoutineIconText}>✓</Text>
+              </View>
+              <View style={styles.generatedRoutineCopy}>
+                <Text style={styles.generatedRoutineTitle}>
+                  새 루틴을 만들었어요
+                </Text>
+                <Text style={styles.generatedRoutineDescription}>
+                  보유한 제품을 기준으로 AI가 이번 주 루틴을 구성했어요.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() =>
+                  navigate('home', {
+                    routineOverride: generatedRoutine,
+                    routineChange: {
+                      id: `owned-product-routine-${Date.now()}`,
+                      createdAt: new Date().toISOString(),
+                      title: '보유 제품 루틴 생성',
+                      detail:
+                        '보유한 제품을 기준으로 AI가 주간 루틴을 새로 만들었어요.',
+                      tone: 'green',
+                    },
+                  })
+                }
+                style={styles.viewRoutineButton}
+              >
+                <Text style={styles.viewRoutineButtonText}>
+                  홈에서 새 루틴 확인하기
+                </Text>
+                <Text style={styles.viewRoutineButtonArrow}>›</Text>
+              </Pressable>
+            </View>
+          )}
         </ScrollView>
         <BottomNavigation activeScreen="myPage" navigate={navigate} />
       </View>
@@ -537,6 +616,76 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   ownedInactiveStatus: { color: '#7A847B', backgroundColor: '#F1F2F0' },
+  createRoutineButton: {
+    height: 50,
+    marginTop: 13,
+    borderRadius: 13,
+    backgroundColor: '#4D875B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createRoutineButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  createRoutineButtonDisabled: { opacity: 0.65 },
+  createRoutineButtonArrow: {
+    position: 'absolute',
+    right: 16,
+    color: '#FFFFFF',
+    fontSize: 21,
+  },
+  generatedRoutineCard: {
+    marginTop: 12,
+    borderRadius: 14,
+    backgroundColor: '#F1F7EE',
+    borderWidth: 1,
+    borderColor: '#DDEBD9',
+    padding: 13,
+  },
+  generatedRoutineIcon: {
+    position: 'absolute',
+    top: 13,
+    left: 13,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#5B9267',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generatedRoutineIconText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  generatedRoutineCopy: { marginLeft: 40 },
+  generatedRoutineTitle: { color: '#3D6846', fontSize: 12, fontWeight: '900' },
+  generatedRoutineDescription: {
+    marginTop: 4,
+    color: '#6E8371',
+    fontSize: 9,
+    lineHeight: 13,
+  },
+  viewRoutineButton: {
+    height: 39,
+    marginTop: 12,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#84A98A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewRoutineButtonText: { color: '#467F52', fontSize: 10, fontWeight: '900' },
+  viewRoutineButtonArrow: {
+    position: 'absolute',
+    right: 12,
+    color: '#467F52',
+    fontSize: 18,
+  },
   calendarCard: {
     marginTop: 22,
     borderRadius: 16,
