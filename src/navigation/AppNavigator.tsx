@@ -19,6 +19,7 @@ export function AppNavigator() {
   const [routineChanges, setRoutineChanges] = useState<RoutineChangeRecord[]>([]);
   const [purchasedProducts, setPurchasedProducts] = useState<PurchasedProduct[]>([]);
   const removePurchasedProduct = (productId: number) => setPurchasedProducts(currentProducts => currentProducts.filter(product => product.id !== productId));
+  const addPurchasedProduct = (product: PurchasedProduct) => setPurchasedProducts(currentProducts => currentProducts.some(item => item.id === product.id) ? currentProducts : [...currentProducts, product]);
   const navigate: Navigate = (nextScreen, params) => {
     if (params?.consultQuestion) {
       setConsultQuestion(params.consultQuestion);
@@ -45,7 +46,7 @@ export function AppNavigator() {
   return <View style={styles.container}>
     {screen === 'home' && <HomeScreen navigate={navigate} addedRoutineProduct={addedRoutineProduct} routineOverride={routineOverride} />}
     {screen === 'myPage' && <MyPageScreen navigate={navigate} routineChanges={routineChanges} purchasedProducts={purchasedProducts} onRemovePurchasedProduct={removePurchasedProduct} />}
-    {screen === 'productExplore' && <ProductExploreScreen navigate={navigate} />}
+    {screen === 'productExplore' && <ProductExploreScreen navigate={navigate} onPurchase={addPurchasedProduct} />}
     <View style={screen === 'routineConsult' ? styles.consultVisible : styles.consultHidden}>
       <RoutineConsultScreen navigate={navigate} initialQuestion={consultQuestion} initialProductId={consultProductId} onQuestionHandled={() => { setConsultQuestion(''); setConsultProductId(null); }} />
     </View>
