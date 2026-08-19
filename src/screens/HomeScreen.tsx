@@ -3,6 +3,7 @@ import {
   Image,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -112,10 +113,14 @@ export function HomeScreen({
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FBFCF9" />
       <View style={styles.page}>
-        <View style={styles.screen}>
+        <ScrollView
+          style={styles.screen}
+          contentContainerStyle={styles.screenContent}
+          showsVerticalScrollIndicator={false}
+        >
           <HomeHeader nickname={nickname} />
           <RoutineSummary todayLabel={formatToday(today)} routines={routines} />
-        </View>
+        </ScrollView>
         <View style={styles.fixedShortcutArea}>
           <ShortcutSection navigate={navigate} />
         </View>
@@ -491,7 +496,12 @@ function ShortcutCard({
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FBFCF9' },
   page: { flex: 1 },
-  screen: { flex: 1, paddingHorizontal: 12, paddingTop: 40, paddingBottom: 10 },
+  screen: { flex: 1 },
+  screenContent: {
+    paddingHorizontal: 12,
+    paddingTop: 40,
+    paddingBottom: 10,
+  },
   topRow: {
     height: 42,
     marginHorizontal: 12,
