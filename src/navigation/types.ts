@@ -1,8 +1,4 @@
-export type AppScreen =
-  | 'home'
-  | 'myPage'
-  | 'productExplore'
-  | 'routineConsult';
+export type AppScreen = 'home' | 'myPage' | 'productExplore' | 'routineConsult';
 
 export type NavigationParams = {
   consultQuestion?: string;
@@ -31,4 +27,4 @@ export type RoutineChangeRecord = {
 };
 
 export type Navigate = (screen: AppScreen, params?: NavigationParams) => void;
-import {DailyRoutine} from '../api/routine';
+import { DailyRoutine } from '../api/routine';

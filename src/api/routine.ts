@@ -1,4 +1,4 @@
-import {API_BASE_URL} from './user';
+import { API_BASE_URL } from './user';
 
 export type RoutineApiProduct = {
   id: number;
