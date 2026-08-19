@@ -25,20 +25,15 @@ export function ProductExploreScreen({navigate, onPurchase}: {navigate: Navigate
 
   useEffect(() => {
     const keyword = query.trim();
-    if (!keyword) {
-      setProducts([]);
-      setSelectedProduct(null);
-      setSearchError('');
-      return;
-    }
-
     let isCurrentSearch = true;
     const timer = setTimeout(() => {
       setIsSearching(true);
       setSearchError('');
       searchCareProducts(keyword)
         .then(result => {
-          if (isCurrentSearch) setProducts(result);
+          if (isCurrentSearch) {
+            setProducts([...result].sort((first, second) => first.name.localeCompare(second.name, 'ko-KR')));
+          }
         })
         .catch(() => {
           if (isCurrentSearch) setSearchError('제품 정보를 불러오지 못했어요.');
@@ -46,7 +41,7 @@ export function ProductExploreScreen({navigate, onPurchase}: {navigate: Navigate
         .finally(() => {
           if (isCurrentSearch) setIsSearching(false);
         });
-    }, 350);
+    }, keyword ? 350 : 0);
 
     return () => {
       isCurrentSearch = false;
@@ -54,8 +49,7 @@ export function ProductExploreScreen({navigate, onPurchase}: {navigate: Navigate
     };
   }, [query]);
 
-  // 서버가 제품 종류·브랜드·제품명을 기준으로 이미 검색한 결과를 내려줍니다.
-  // 프론트에서는 제품명과 카테고리에서 추론한 기능만 추가 필터링합니다.
+  // 서버에서 전체 제품 또는 검색 결과를 받아오고, 프론트에서 기능 필터를 적용합니다.
   const visibleProducts = useMemo(
     () => products.filter(product => matchesFunction(product, filter)),
     [filter, products],
@@ -73,8 +67,7 @@ export function ProductExploreScreen({navigate, onPurchase}: {navigate: Navigate
         <View style={[styles.productGrid, productLayout.grid]}>{visibleProducts.map(product => <ProductCard key={product.id} product={product} selected={selectedProduct?.id === product.id} onPress={() => { setPurchaseNotice(null); setSelectedProduct(currentProduct => currentProduct?.id === product.id ? null : product); }} />)}</View>
         {isSearching && <Text style={styles.emptyText}>제품을 검색하고 있어요.</Text>}
         {!isSearching && searchError ? <Text style={styles.emptyText}>{searchError}</Text> : null}
-        {!isSearching && !searchError && query.trim() && visibleProducts.length === 0 && <Text style={styles.emptyText}>검색 결과가 없어요.</Text>}
-        {!isSearching && !searchError && !query.trim() && <Text style={styles.emptyText}>제품 종류, 브랜드, 제품명을 검색해보세요.</Text>}
+        {!isSearching && !searchError && visibleProducts.length === 0 && <Text style={styles.emptyText}>{query.trim() ? '검색 결과가 없어요.' : '등록된 제품 정보가 없어요.'}</Text>}
       </ScrollView>
       {selectedProduct && <View style={[styles.selectedProductBox, {marginHorizontal: 12, marginBottom: 8}]}><View><Text style={styles.selectedLabel}>선택한 제품</Text><Text numberOfLines={1} style={styles.selectedName}>{selectedProduct.brand} {selectedProduct.name}</Text></View>{purchaseNotice && <View style={{marginTop: 10, padding: 9, borderRadius: 9, flexDirection: 'row', alignItems: 'center', backgroundColor: purchaseNotice === 'success' ? '#EAF4E7' : '#FFF1ED'}}><Text style={{fontSize: 14, color: purchaseNotice === 'success' ? '#4D875B' : '#B46B5E', marginRight: 7}}>{purchaseNotice === 'success' ? '✓' : '!'}</Text><View><Text style={{fontSize: 9, color: purchaseNotice === 'success' ? '#426F4C' : '#97584E', fontWeight: '900'}}>{purchaseNotice === 'success' ? '보유 제품에 추가했어요' : '제품을 추가하지 못했어요'}</Text><Text style={{fontSize: 8, color: purchaseNotice === 'success' ? '#69816D' : '#A2736C', marginTop: 2}}>{purchaseNotice === 'success' ? '마이페이지에서 보유 제품을 확인해보세요.' : '잠시 후 다시 시도해주세요.'}</Text></View></View>}<View style={{flexDirection: 'row', gap: 8, marginTop: 10}}><Pressable onPress={() => navigate('routineConsult', {consultQuestion: `${selectedProduct.brand} ${selectedProduct.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`, consultProductId: selectedProduct.id})} style={[styles.consultButton, {flex: 1, marginTop: 0}]}><Text style={styles.consultButtonText}>AI에게 물어보기  ›</Text></Pressable><Pressable onPress={async () => { try { await addUserCareProduct(1, selectedProduct.id); onPurchase({...selectedProduct, usedInRoutine: false}); setPurchaseNotice('success'); } catch { setPurchaseNotice('error'); } }} style={[styles.consultButton, {flex: 0.48, marginTop: 0, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#4D875B'}]}><Text style={[styles.consultButtonText, {color: '#3F7C51'}]}>구매하기</Text></Pressable></View></View>}
       <BottomNavigation activeScreen="productExplore" navigate={navigate} />
