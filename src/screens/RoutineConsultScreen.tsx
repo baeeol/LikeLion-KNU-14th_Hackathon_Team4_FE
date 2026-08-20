@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ActivityIndicator,
   Image,
@@ -15,7 +16,11 @@ import {
 import { Navigate } from '../navigation/types';
 import { BrandLogo } from '../components/common/BrandLogo';
 import { ProductIllustration } from '../components/common/ProductIllustration';
-import { CareProduct, searchCareProducts } from '../api/careProduct';
+import {
+  addUserCareProduct,
+  CareProduct,
+  searchCareProducts,
+} from '../api/careProduct';
 import { getTroubleSolution, questionNewProduct } from '../api/routineConsult';
 import { DailyRoutine } from '../api/routine';
 
@@ -397,14 +402,21 @@ export function RoutineConsultScreen({
                 {productResult && productResultMessageId === chatMessage.id && (
                   <ProductConsultationCard
                     result={productResult}
-                    onApply={() =>
-                      navigate('home', {
-                        routineOverride: productResult.routines,
-                        routineChange: createRoutineChangeRecord(
-                          productResult.product,
-                        ),
-                      })
-                    }
+                    onPurchase={async () => {
+                      try {
+                        await addUserCareProduct(1, productResult.product.id);
+                        navigate('myPage', {
+                          ownedProduct: productResult.product,
+                        });
+                      } catch (error) {
+                        Alert.alert(
+                          '보유 제품 추가 실패',
+                          error instanceof Error
+                            ? error.message
+                            : '잠시 후 다시 시도해주세요.',
+                        );
+                      }
+                    }}
                   />
                 )}
               </React.Fragment>
@@ -567,10 +579,10 @@ function ProductAnalyzingCard() {
 
 function ProductConsultationCard({
   result,
-  onApply,
+  onPurchase,
 }: {
   result: ProductConsultationResult;
-  onApply: () => void;
+  onPurchase: () => Promise<void>;
 }) {
   if (!result.isSuitable) {
     return (
@@ -601,12 +613,13 @@ function ProductConsultationCard({
           </Text>
         </View>
       )}
-      {result.routines && (
-        <Pressable onPress={onApply} style={styles.applyRoutineButton}>
-          <Text style={styles.applyRoutineButtonText}>이 루틴 적용하기</Text>
-          <Text style={styles.applyRoutineArrow}>›</Text>
-        </Pressable>
-      )}
+      <Pressable
+        onPress={() => void onPurchase()}
+        style={styles.applyRoutineButton}
+      >
+        <Text style={styles.applyRoutineButtonText}>구매하기</Text>
+        <Text style={styles.applyRoutineArrow}>›</Text>
+      </Pressable>
     </View>
   );
 }
@@ -641,16 +654,6 @@ function getAdjustedRoutinePreview(
   }
 
   return null;
-}
-
-function createRoutineChangeRecord(product: CareProduct) {
-  return {
-    id: `routine-change-${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    title: 'AI 추천 제품 추가',
-    detail: `${product.name}을(를) 저녁 루틴에 추가했어요.`,
-    tone: 'green' as const,
-  };
 }
 
 function TodayTroubleRoutineCard({
