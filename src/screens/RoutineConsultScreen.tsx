@@ -42,6 +42,7 @@ type TroubleSolution = {
   routines?: DailyRoutine[];
   previousRoutines?: DailyRoutine[];
   troubleKey?: string;
+  trouble?: string;
 };
 
 type ProductConsultationResult = {
@@ -304,6 +305,7 @@ export function RoutineConsultScreen({
                   routines: response.routines,
                   previousRoutines: previousRoutines ?? undefined,
                   troubleKey,
+                  trouble: trimmedMessage,
                   title: '보유 제품으로 조정할 수 있어요',
                   description: response.reason,
                   steps: [
@@ -432,6 +434,15 @@ export function RoutineConsultScreen({
                             await saveUserRoutines(1, troubleSolution.routines);
                             navigate('home', {
                               routineOverride: troubleSolution.routines,
+                              routineChange: {
+                                id: `trouble-routine-${Date.now()}`,
+                                createdAt: new Date().toISOString(),
+                                title: 'AI 트러블 케어 루틴 조정',
+                                detail:
+                                  (troubleSolution.trouble ?? '피부 고민') +
+                                  '에 맞춰 보유 제품 루틴을 조정했어요.',
+                                tone: 'orange',
+                              },
                             });
                           } catch (error) {
                             Alert.alert(
