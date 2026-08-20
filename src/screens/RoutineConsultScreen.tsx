@@ -385,13 +385,6 @@ export function RoutineConsultScreen({
                             routineOverride: troubleSolution.routines,
                           })
                         }
-                        onAskProduct={product => {
-                          setProductUnderReview(product);
-                          setProductIdUnderReview(product.id);
-                          setMessage(
-                            `${product.brand} ${product.name} 제품이 제 피부와 현재 루틴에 잘 맞을까요?`,
-                          );
-                        }}
                       />
                       <BotMessage>
                         <Text style={styles.messageText}>
@@ -486,12 +479,10 @@ function TroubleSolutionCard({
   solution,
   recommendedProduct,
   onCheckRoutine,
-  onAskProduct,
 }: {
   solution: TroubleSolution;
   recommendedProduct: CareProduct | null;
   onCheckRoutine: () => void;
-  onAskProduct: (product: CareProduct) => void;
 }) {
   return (
     <View
@@ -520,22 +511,13 @@ function TroubleSolutionCard({
         />
       )}
       {!solution.canUseOwnedProducts && recommendedProduct && (
-        <RecommendedProductCard
-          product={recommendedProduct}
-          onAskProduct={onAskProduct}
-        />
+        <RecommendedProductCard product={recommendedProduct} />
       )}
     </View>
   );
 }
 
-function RecommendedProductCard({
-  product,
-  onAskProduct,
-}: {
-  product: CareProduct;
-  onAskProduct: (product: CareProduct) => void;
-}) {
+function RecommendedProductCard({ product }: { product: CareProduct }) {
   const functionName = product.functions?.[0] ?? product.category;
   return (
     <View>
@@ -562,13 +544,6 @@ function RecommendedProductCard({
           </View>
         </View>
       </View>
-      <Pressable
-        onPress={() => onAskProduct(product)}
-        style={styles.recommendedAskButton}
-      >
-        <Text style={styles.recommendedAskButtonText}>AI에게 물어보기</Text>
-        <Text style={styles.recommendedAskArrow}>›</Text>
-      </Pressable>
     </View>
   );
 }
@@ -1113,26 +1088,6 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   recommendedTagText: { fontSize: 7, color: '#A16D40' },
-  recommendedAskButton: {
-    height: 32,
-    marginTop: 7,
-    borderRadius: 8,
-    backgroundColor: '#4F875B',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recommendedAskButtonText: {
-    fontSize: 9,
-    color: '#FFFFFF',
-    fontWeight: '900',
-  },
-  recommendedAskArrow: {
-    position: 'absolute',
-    right: 10,
-    color: '#FFFFFF',
-    fontSize: 17,
-  },
   analyzingRow: {
     flexDirection: 'row',
     alignItems: 'center',
