@@ -22,7 +22,11 @@ import {
   searchCareProducts,
 } from '../api/careProduct';
 import { getTroubleSolution, questionNewProduct } from '../api/routineConsult';
-import { DailyRoutine } from '../api/routine';
+import {
+  DailyRoutine,
+  getUserRoutines,
+  saveUserRoutines,
+} from '../api/routine';
 
 type ChatMessage = {
   id: number;
@@ -36,6 +40,8 @@ type TroubleSolution = {
   description: string;
   steps: string[];
   routines?: DailyRoutine[];
+  previousRoutines?: DailyRoutine[];
+  troubleKey?: string;
 };
 
 type ProductConsultationResult = {
@@ -100,6 +106,10 @@ function getRecommendationKeyword(trouble: string) {
   return '진정';
 }
 
+function normalizeTrouble(trouble: string) {
+  return trouble.trim().replace(/\s+/g, '').toLowerCase();
+}
+
 function createProductConsultationResult(
   product: CareProduct,
 ): ProductConsultationResult {
@@ -152,6 +162,9 @@ export function RoutineConsultScreen({
   >(null);
   const [recommendedProduct, setRecommendedProduct] =
     useState<CareProduct | null>(null);
+  const [adjustedTroubleKeys, setAdjustedTroubleKeys] = useState<string[]>(
+    [],
+  );
   const [productUnderReview, setProductUnderReview] =
     useState<CareProduct | null>(null);
   const [productIdUnderReview, setProductIdUnderReview] = useState<
@@ -227,13 +240,12 @@ export function RoutineConsultScreen({
                   product: questionProduct,
                   isSuitable: true,
                   routines: response.routines,
-                  reason:
-                    '현재 루틴에 추가해도 제품 간 충돌이 확인되지 않았어요.',
+                  reason: response.reason,
                 }
               : {
                   product: questionProduct,
                   isSuitable: false,
-                  reason: response.conflict.conflictMsg,
+                  reason: response.reason,
                 };
             const botMessage: ChatMessage = {
               id: userMessage.id + 1,
@@ -269,17 +281,31 @@ export function RoutineConsultScreen({
       setChatMessages(currentMessages => [...currentMessages, userMessage]);
       setAwaitingTroubleDetail(false);
       setIsAnalyzingTrouble(true);
+      const troubleKey = normalizeTrouble(trimmedMessage);
+      const forceRecommend = adjustedTroubleKeys.includes(troubleKey);
 
       setTimeout(() => {
-        void getTroubleSolution(1, trimmedMessage)
-          .then(response => {
+        void Promise.all([
+          getUserRoutines(1).catch(() => null),
+          getTroubleSolution(1, trimmedMessage, forceRecommend),
+        ])
+          .then(([previousRoutines, response]) => {
+            if (response.canSolveNow) {
+              setAdjustedTroubleKeys(currentKeys =>
+                currentKeys.includes(troubleKey)
+                  ? currentKeys
+                  : [...currentKeys, troubleKey],
+              );
+            }
+
             const solution: TroubleSolution = response.canSolveNow
               ? {
                   canUseOwnedProducts: true,
                   routines: response.routines,
+                  previousRoutines: previousRoutines ?? undefined,
+                  troubleKey,
                   title: '보유 제품으로 조정할 수 있어요',
-                  description:
-                    '현재 보유 제품을 기준으로 트러블 케어 루틴을 새로 구성했어요.',
+                  description: response.reason,
                   steps: [
                     '자극 가능성이 있는 제품 사용일을 조정했어요.',
                     '수정된 일주일 루틴을 확인해보세요.',
@@ -288,8 +314,7 @@ export function RoutineConsultScreen({
               : {
                   canUseOwnedProducts: false,
                   title: '추가 제품으로 보완이 필요해요',
-                  description:
-                    '현재 보유 제품만으로는 해결하기 어려운 상태예요.',
+                  description: response.reason,
                   steps: ['AI가 현재 고민에 맞는 제품을 추천했어요.'],
                 };
             const botMessage: ChatMessage = {
@@ -398,11 +423,25 @@ export function RoutineConsultScreen({
                             );
                           }
                         }}
-                        onCheckRoutine={() =>
-                          navigate('home', {
-                            routineOverride: troubleSolution.routines,
-                          })
-                        }
+                        onCheckRoutine={async () => {
+                          if (!troubleSolution.routines) {
+                            return;
+                          }
+
+                          try {
+                            await saveUserRoutines(1, troubleSolution.routines);
+                            navigate('home', {
+                              routineOverride: troubleSolution.routines,
+                            });
+                          } catch (error) {
+                            Alert.alert(
+                              '루틴 저장 실패',
+                              error instanceof Error
+                                ? error.message
+                                : '잠시 후 다시 시도해주세요.',
+                            );
+                          }
+                        }}
                       />
                       <BotMessage>
                         <Text style={styles.messageText}>
@@ -509,7 +548,7 @@ function TroubleSolutionCard({
   solution: TroubleSolution;
   recommendedProduct: CareProduct | null;
   onPurchaseRecommendedProduct: (product: CareProduct) => Promise<void>;
-  onCheckRoutine: () => void;
+  onCheckRoutine: () => Promise<void>;
 }) {
   return (
     <View
@@ -524,6 +563,7 @@ function TroubleSolutionCard({
           : '현재 보유 제품만으로는 부족'}
       </Text>
       <Text style={styles.solutionTitle}>{solution.title}</Text>
+      <Text style={styles.reasonLabel}>판단 근거</Text>
       <Text style={styles.solutionDescription}>{solution.description}</Text>
       {solution.steps.map(step => (
         <View key={step} style={styles.solutionStep}>
@@ -531,12 +571,26 @@ function TroubleSolutionCard({
           <Text style={styles.solutionStepText}>{step}</Text>
         </View>
       ))}
-      {solution.canUseOwnedProducts && solution.routines && (
-        <TodayTroubleRoutineCard
-          routines={solution.routines}
-          onPress={onCheckRoutine}
-        />
-      )}
+      {solution.canUseOwnedProducts &&
+        solution.routines &&
+        solution.previousRoutines && (
+          <RoutineChangeSummary
+            previousRoutines={solution.previousRoutines}
+            adjustedRoutines={solution.routines}
+            onPress={onCheckRoutine}
+          />
+        )}
+      {solution.canUseOwnedProducts &&
+        solution.routines &&
+        !solution.previousRoutines && (
+          <Pressable
+            onPress={() => void onCheckRoutine()}
+            style={styles.checkRoutineButton}
+          >
+            <Text style={styles.checkRoutineButtonText}>루틴 확인하기</Text>
+            <Text style={styles.checkRoutineArrow}>›</Text>
+          </Pressable>
+        )}
       {!solution.canUseOwnedProducts && recommendedProduct && (
         <RecommendedProductCard
           product={recommendedProduct}
@@ -545,6 +599,101 @@ function TroubleSolutionCard({
       )}
     </View>
   );
+}
+
+type RoutineChange = {
+  id: string;
+  label: string;
+  detail: string;
+};
+
+function RoutineChangeSummary({
+  previousRoutines,
+  adjustedRoutines,
+  onPress,
+}: {
+  previousRoutines: DailyRoutine[];
+  adjustedRoutines: DailyRoutine[];
+  onPress: () => Promise<void>;
+}) {
+  const changes = getRoutineChanges(previousRoutines, adjustedRoutines);
+
+  return (
+    <View style={styles.routineChangeCard}>
+      <Text style={styles.routineChangeTitle}>어디가 바뀌었나요?</Text>
+      {changes.length ? (
+        changes.map(change => (
+          <View key={change.id} style={styles.routineChangeRow}>
+            <Text style={styles.routineChangeLabel}>{change.label}</Text>
+            <Text style={styles.routineChangeDetail}>{change.detail}</Text>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.routineChangeEmpty}>
+          제품 구성은 유지하고 사용 빈도만 조정했어요.
+        </Text>
+      )}
+      <Pressable
+        onPress={() => void onPress()}
+        style={styles.checkRoutineButton}
+      >
+        <Text style={styles.checkRoutineButtonText}>루틴 확인하기</Text>
+        <Text style={styles.checkRoutineArrow}>›</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function getRoutineChanges(
+  previousRoutines: DailyRoutine[],
+  adjustedRoutines: DailyRoutine[],
+): RoutineChange[] {
+  const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+  const changes: RoutineChange[] = [];
+
+  adjustedRoutines.forEach((adjustedDay, dayIndex) => {
+    const previousDay = previousRoutines[dayIndex] ?? {
+      morning: [],
+      evening: [],
+    };
+
+    (['morning', 'evening'] as const).forEach(timing => {
+      const before = previousDay[timing] ?? [];
+      const after = adjustedDay[timing] ?? [];
+      const beforeIds = new Set(before.map(product => product.id));
+      const afterIds = new Set(after.map(product => product.id));
+      const added = after
+        .filter(product => !beforeIds.has(product.id))
+        .map(product => product.name);
+      const removed = before
+        .filter(product => !afterIds.has(product.id))
+        .map(product => product.name);
+      const beforeOrder = before.map(product => product.id).join(',');
+      const afterOrder = after.map(product => product.id).join(',');
+
+      if (!added.length && !removed.length && beforeOrder === afterOrder) {
+        return;
+      }
+
+      const details = [
+        added.length ? `추가: ${added.join(', ')}` : '',
+        removed.length ? `제외: ${removed.join(', ')}` : '',
+        !added.length && !removed.length && beforeOrder !== afterOrder
+          ? '사용 순서 조정'
+          : '',
+      ].filter(Boolean);
+
+      changes.push({
+        id: `${dayIndex}-${timing}`,
+        label: `${weekdays[dayIndex]}요일 ${
+          timing === 'morning' ? '아침' : '저녁'
+        }`,
+        detail: details.join(' · '),
+      });
+    });
+  });
+
+  return changes;
 }
 
 function RecommendedProductCard({
@@ -645,6 +794,7 @@ function ProductConsultationCard({
         <Text style={styles.productResultTitle}>
           현재 루틴에는 추가하지 않는 편이 좋아요
         </Text>
+        <Text style={styles.reasonLabel}>판단 근거</Text>
         <Text style={styles.productResultReason}>{result.reason}</Text>
       </View>
     );
@@ -658,6 +808,7 @@ function ProductConsultationCard({
     <View style={styles.suitableCard}>
       <Text style={styles.productResultKicker}>AI 분석 결과 · 추천</Text>
       <Text style={styles.productResultTitle}>오늘 루틴에 추가해볼까요?</Text>
+      <Text style={styles.reasonLabel}>판단 근거</Text>
       <Text style={styles.productResultReason}>{result.reason}</Text>
       {adjustedRoutine && (
         <View style={styles.newProductRoutine}>
@@ -708,50 +859,6 @@ function getAdjustedRoutinePreview(
   }
 
   return null;
-}
-
-function TodayTroubleRoutineCard({
-  routines,
-  onPress,
-}: {
-  routines: DailyRoutine[];
-  onPress: () => void;
-}) {
-  const todayIndex = new Date().getDay();
-  const routine = routines[(todayIndex + 6) % 7] ?? {
-    morning: [],
-    evening: [],
-  };
-  return (
-    <View style={styles.todayTroubleRoutine}>
-      <View style={styles.todayTroubleHeader}>
-        <Text style={styles.todayTroubleKicker}>오늘의 트러블 케어 루틴</Text>
-        <Text style={styles.todayTroubleBadge}>조정됨</Text>
-      </View>
-      <View style={styles.todayRoutineLine}>
-        <Text style={styles.todayRoutineTime}>AM</Text>
-        <Text style={styles.todayRoutineProducts}>
-          {formatRoutineNames(routine.morning)}
-        </Text>
-      </View>
-      <View style={styles.todayRoutineLine}>
-        <Text style={styles.todayRoutineTime}>PM</Text>
-        <Text style={styles.todayRoutineProducts}>
-          {formatRoutineNames(routine.evening)}
-        </Text>
-      </View>
-      <Pressable onPress={onPress} style={styles.checkRoutineButton}>
-        <Text style={styles.checkRoutineButtonText}>루틴 확인하기</Text>
-        <Text style={styles.checkRoutineArrow}>›</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function formatRoutineNames(products: DailyRoutine['morning']) {
-  return (
-    products.map(product => product.name).join('  →  ') || '등록된 제품 없음'
-  );
 }
 
 function RoutineAnalyzingCard() {
@@ -964,6 +1071,18 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 4,
   },
+  reasonLabel: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    marginBottom: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 5,
+    backgroundColor: '#EAF4E7',
+    color: '#578D61',
+    fontSize: 8,
+    fontWeight: '900',
+  },
   solutionDescription: {
     fontSize: 9,
     color: '#687869',
@@ -1010,6 +1129,33 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   todayRoutineProducts: { fontSize: 8, color: '#657467', flex: 1 },
+  routineChangeCard: {
+    marginTop: 9,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DDE9D9',
+  },
+  routineChangeTitle: {
+    fontSize: 10,
+    color: '#3D6844',
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  routineChangeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 5,
+  },
+  routineChangeLabel: {
+    width: 52,
+    fontSize: 8,
+    color: '#4F875B',
+    fontWeight: '900',
+  },
+  routineChangeDetail: { flex: 1, fontSize: 8, lineHeight: 12, color: '#657467' },
+  routineChangeEmpty: { fontSize: 8, lineHeight: 12, color: '#657467' },
   checkRoutineButton: {
     height: 30,
     marginTop: 9,

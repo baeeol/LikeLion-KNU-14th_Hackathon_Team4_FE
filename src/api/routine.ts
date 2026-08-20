@@ -66,3 +66,20 @@ export async function generateRoutineFromOwnedProducts(
   // 저장이 완료된 뒤 GET 요청으로 새 주간 루틴을 가져옵니다.
   return getUserRoutines(userId);
 }
+
+export async function saveUserRoutines(
+  userId: number,
+  routines: DailyRoutine[],
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/user/${userId}/routine`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ routines }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, '조정된 루틴을 저장하지 못했습니다.'),
+    );
+  }
+}

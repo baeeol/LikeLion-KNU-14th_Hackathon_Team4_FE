@@ -296,17 +296,17 @@ function RoutineItem({
         />
       </View>
       <View style={styles.itemTextWrap}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.itemTopRow}>
           <Text style={styles.itemCategory}>{product.category}</Text>
           {typeof product.volume === 'number' && (
-            <Text
-              style={[styles.itemCategory, { marginLeft: 6, color: '#628466' }]}
-            >
-              사용량 {product.volume}ml
-            </Text>
+            <View style={styles.volumeBadge}>
+              <Text style={styles.volumeText}>{product.volume}ml</Text>
+            </View>
           )}
         </View>
-        <Text style={styles.itemName}>{product.name}</Text>
+        <Text style={styles.itemName} numberOfLines={1}>
+          {product.name}
+        </Text>
       </View>
     </View>
   );
@@ -582,7 +582,16 @@ const styles = StyleSheet.create({
   routineCreamImage: { width: 48, height: 40 },
   routineSunscreenImage: { width: 34, height: 46 },
   itemTextWrap: { flex: 1 },
+  itemTopRow: { flexDirection: 'row', alignItems: 'center' },
   itemCategory: { fontSize: 8, color: '#7D8780' },
+  volumeBadge: {
+    marginLeft: 'auto',
+    borderRadius: 7,
+    backgroundColor: '#EAF4E7',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  volumeText: { fontSize: 8, color: '#4F875B', fontWeight: '900' },
   itemName: { fontSize: 12, color: '#303A32', fontWeight: '800', marginTop: 4 },
   emptyRoutineRow: {
     height: 58,

@@ -8,6 +8,7 @@ type AiRoutine = {
 
 type TroubleSolutionResponse = {
   canSolveNow: boolean;
+  reason?: string;
   data: AiRoutine | CareProduct;
 };
 
@@ -18,16 +19,17 @@ export type ProductConflict = {
 
 type NewProductQuestionResponse = {
   canJoinNow: boolean;
+  reason?: string;
   data: AiRoutine | ProductConflict;
 };
 
 export type TroubleSolutionResult =
-  | { canSolveNow: true; routines: DailyRoutine[] }
-  | { canSolveNow: false; product: CareProduct };
+  | { canSolveNow: true; reason: string; routines: DailyRoutine[] }
+  | { canSolveNow: false; reason: string; product: CareProduct };
 
 export type NewProductQuestionResult =
-  | { canJoinNow: true; routines: DailyRoutine[] }
-  | { canJoinNow: false; conflict: ProductConflict };
+  | { canJoinNow: true; reason: string; routines: DailyRoutine[] }
+  | { canJoinNow: false; reason: string; conflict: ProductConflict };
 
 type ApiErrorResponse = {
   message?: string | string[];
@@ -45,11 +47,15 @@ async function getApiErrorMessage(response: Response, fallback: string) {
 export async function getTroubleSolution(
   userId: number,
   trouble: string,
+  forceRecommend = false,
 ): Promise<TroubleSolutionResult> {
+  const query = new URLSearchParams({ trouble });
+  if (forceRecommend) {
+    query.set('forceRecommend', 'true');
+  }
+
   const response = await fetch(
-    `${API_BASE_URL}/user/${userId}/trouble_solution?trouble=${encodeURIComponent(
-      trouble,
-    )}`,
+    `${API_BASE_URL}/user/${userId}/trouble_solution?${query.toString()}`,
   );
   if (!response.ok) {
     throw new Error(
@@ -64,9 +70,16 @@ export async function getTroubleSolution(
   return data.canSolveNow
     ? {
         canSolveNow: true,
+        reason:
+          data.reason ?? '현재 보유 제품의 사용 방식을 조정해 관리할 수 있어요.',
         routines: (data.data as AiRoutine).routines,
       }
-    : { canSolveNow: false, product: data.data as CareProduct };
+    : {
+        canSolveNow: false,
+        reason:
+          data.reason ?? '현재 보유 제품에 필요한 핵심 기능이 부족해요.',
+        product: data.data as CareProduct,
+      };
 }
 
 export async function questionNewProduct(
@@ -89,7 +102,16 @@ export async function questionNewProduct(
   return data.canJoinNow
     ? {
         canJoinNow: true,
+        reason:
+          data.reason ?? '현재 루틴과 함께 사용할 수 있는 제품이에요.',
         routines: (data.data as AiRoutine).routines,
       }
-    : { canJoinNow: false, conflict: data.data as ProductConflict };
+    : {
+        canJoinNow: false,
+        reason:
+          data.reason ??
+          (data.data as ProductConflict).conflictMsg ??
+          '현재 루틴과의 중복 또는 자극 가능성을 확인했어요.',
+        conflict: data.data as ProductConflict,
+      };
 }

@@ -22,7 +22,11 @@ import {
   getUserCareProducts,
   OwnedCareProduct,
 } from '../api/careProduct';
-import { DailyRoutine, generateRoutineFromOwnedProducts } from '../api/routine';
+import {
+  DailyRoutine,
+  generateRoutineFromOwnedProducts,
+  getUserRoutines,
+} from '../api/routine';
 
 const FALLBACK_USER: User = {
   id: 1,
@@ -123,10 +127,30 @@ export function MyPageScreen({
         // 백엔드 연결 전에도 해커톤 데모 화면은 기본 정보로 유지합니다.
       });
     getUserCareProducts(1)
-      .then(products => {
-        setServerProductIds(products.map(product => product.id));
+      .then(async products => {
+        let routineProductIds = new Set<number>();
+
+        try {
+          const routines = await getUserRoutines(1);
+          routineProductIds = new Set(
+            routines.flatMap(day => [
+              ...day.morning.map(product => product.id),
+              ...day.evening.map(product => product.id),
+            ]),
+          );
+        } catch {
+          // 루틴을 불러오지 못해도 보유 제품 자체는 표시합니다.
+        }
+
+        const productsWithRoutineStatus = products.map(product => ({
+          ...product,
+          usedInRoutine:
+            Boolean(product.usedInRoutine) || routineProductIds.has(product.id),
+        }));
+
+        setServerProductIds(productsWithRoutineStatus.map(product => product.id));
         setOwnedProducts(currentProducts =>
-          mergeOwnedProducts(products, currentProducts),
+          mergeOwnedProducts(productsWithRoutineStatus, currentProducts),
         );
       })
       .catch(() => {
