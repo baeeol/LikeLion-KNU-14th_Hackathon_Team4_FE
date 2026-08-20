@@ -385,6 +385,19 @@ export function RoutineConsultScreen({
                       <TroubleSolutionCard
                         solution={troubleSolution}
                         recommendedProduct={recommendedProduct}
+                        onPurchaseRecommendedProduct={async product => {
+                          try {
+                            await addUserCareProduct(1, product.id);
+                            navigate('myPage', { ownedProduct: product });
+                          } catch (error) {
+                            Alert.alert(
+                              '보유 제품 추가 실패',
+                              error instanceof Error
+                                ? error.message
+                                : '잠시 후 다시 시도해주세요.',
+                            );
+                          }
+                        }}
                         onCheckRoutine={() =>
                           navigate('home', {
                             routineOverride: troubleSolution.routines,
@@ -490,10 +503,12 @@ function Header() {
 function TroubleSolutionCard({
   solution,
   recommendedProduct,
+  onPurchaseRecommendedProduct,
   onCheckRoutine,
 }: {
   solution: TroubleSolution;
   recommendedProduct: CareProduct | null;
+  onPurchaseRecommendedProduct: (product: CareProduct) => Promise<void>;
   onCheckRoutine: () => void;
 }) {
   return (
@@ -523,17 +538,41 @@ function TroubleSolutionCard({
         />
       )}
       {!solution.canUseOwnedProducts && recommendedProduct && (
-        <RecommendedProductCard product={recommendedProduct} />
+        <RecommendedProductCard
+          product={recommendedProduct}
+          onPurchase={onPurchaseRecommendedProduct}
+        />
       )}
     </View>
   );
 }
 
-function RecommendedProductCard({ product }: { product: CareProduct }) {
+function RecommendedProductCard({
+  product,
+  onPurchase,
+}: {
+  product: CareProduct;
+  onPurchase: (product: CareProduct) => Promise<void>;
+}) {
+  const [isSelected, setIsSelected] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
   const functionName = product.functions?.[0] ?? product.category;
+
+  const handlePurchase = async () => {
+    setIsPurchasing(true);
+    await onPurchase(product);
+    setIsPurchasing(false);
+  };
+
   return (
     <View>
-      <View style={styles.recommendedProductCard}>
+      <Pressable
+        onPress={() => setIsSelected(selected => !selected)}
+        style={[
+          styles.recommendedProductCard,
+          isSelected && styles.recommendedProductCardSelected,
+        ]}
+      >
         <Text style={styles.recommendedLabel}>AI 추천 제품</Text>
         <View style={styles.recommendedProductContent}>
           <View style={styles.recommendedProductImage}>
@@ -555,7 +594,22 @@ function RecommendedProductCard({ product }: { product: CareProduct }) {
             </View>
           </View>
         </View>
-      </View>
+      </Pressable>
+      {isSelected && (
+        <Pressable
+          disabled={isPurchasing}
+          onPress={() => void handlePurchase()}
+          style={[
+            styles.recommendedPurchaseButton,
+            isPurchasing && styles.recommendedPurchaseButtonDisabled,
+          ]}
+        >
+          <Text style={styles.recommendedPurchaseButtonText}>
+            {isPurchasing ? '추가 중...' : '구매하기'}
+          </Text>
+          <Text style={styles.recommendedPurchaseArrow}>›</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -1050,6 +1104,26 @@ const styles = StyleSheet.create({
     borderColor: '#F0DFC3',
   },
   recommendedProductCardSelected: { borderWidth: 1.5, borderColor: '#A16D40' },
+  recommendedPurchaseButton: {
+    height: 36,
+    marginTop: 8,
+    borderRadius: 9,
+    backgroundColor: '#4F875B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recommendedPurchaseButtonDisabled: { backgroundColor: '#A7B8A8' },
+  recommendedPurchaseButtonText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  recommendedPurchaseArrow: {
+    position: 'absolute',
+    right: 12,
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
   recommendedLabel: {
     fontSize: 10,
     color: '#A36D3D',
