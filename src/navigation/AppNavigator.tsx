@@ -7,7 +7,6 @@ import { RoutineConsultScreen } from '../screens/RoutineConsultScreen';
 import { AppScreen, Navigate, RoutineChangeRecord } from './types';
 import { DailyRoutine } from '../api/routine';
 
-type AddedRoutineProduct = { id: number; category: string; name: string };
 type PurchasedProduct = {
   id: number;
   category: string;
@@ -20,8 +19,6 @@ export function AppNavigator() {
   const [screen, setScreen] = useState<AppScreen>('home');
   const [consultQuestion, setConsultQuestion] = useState('');
   const [consultProductId, setConsultProductId] = useState<number | null>(null);
-  const [addedRoutineProduct, setAddedRoutineProduct] =
-    useState<AddedRoutineProduct | null>(null);
   const [routineOverride, setRoutineOverride] = useState<DailyRoutine[] | null>(
     null,
   );
@@ -48,9 +45,6 @@ export function AppNavigator() {
     if (params?.consultProductId) {
       setConsultProductId(params.consultProductId);
     }
-    if (params?.routineProduct) {
-      setAddedRoutineProduct(params.routineProduct);
-    }
     if (params?.routineChange) {
       setRoutineChanges(currentChanges => [
         params.routineChange!,
@@ -76,7 +70,6 @@ export function AppNavigator() {
       {screen === 'home' && (
         <HomeScreen
           navigate={navigate}
-          addedRoutineProduct={addedRoutineProduct}
           routineOverride={routineOverride}
         />
       )}

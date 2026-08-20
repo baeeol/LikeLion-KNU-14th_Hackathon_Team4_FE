@@ -21,6 +21,7 @@ import {
   getUserRoutines,
   RoutineApiProduct,
 } from '../api/routine';
+import { getUserCareProducts } from '../api/careProduct';
 import { getUser } from '../api/user';
 
 type RoutineProduct = {
@@ -29,30 +30,9 @@ type RoutineProduct = {
   volume?: number;
 };
 
-const MORNING_ROUTINE: RoutineProduct[] = [
-  { category: '클렌저', name: '약산성 젤 클렌저' },
-  { category: '토너', name: '나이아신아마이드 토너' },
-  { category: '세럼', name: '비타민 C 세럼' },
-  { category: '수분크림', name: '수분 장벽 크림' },
-  { category: '선크림', name: '데일리 무기자차 선크림' },
-];
-
-const EVENING_ROUTINE = MORNING_ROUTINE.slice(0, 4).map(product => ({
-  ...product,
-  name: product.category === '세럼' ? '진정 세럼' : product.name,
-}));
-
-const FALLBACK_ROUTINES: DailyRoutine[] = Array.from({ length: 7 }, () => ({
-  morning: MORNING_ROUTINE.map(({ category, name }, index) => ({
-    id: index + 1,
-    category,
-    name,
-  })),
-  evening: EVENING_ROUTINE.map(({ category, name }, index) => ({
-    id: index + 11,
-    category,
-    name,
-  })),
+const EMPTY_ROUTINES: DailyRoutine[] = Array.from({ length: 7 }, () => ({
+  morning: [],
+  evening: [],
 }));
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -63,19 +43,15 @@ function formatToday(date: Date) {
   })`;
 }
 
-type AddedRoutineProduct = { id: number; category: string; name: string };
-
 export function HomeScreen({
   navigate,
-  addedRoutineProduct,
   routineOverride,
 }: {
   navigate: Navigate;
-  addedRoutineProduct?: AddedRoutineProduct | null;
   routineOverride?: DailyRoutine[] | null;
 }) {
   const [today, setToday] = useState(() => new Date());
-  const [routines, setRoutines] = useState<DailyRoutine[]>(FALLBACK_ROUTINES);
+  const [routines, setRoutines] = useState<DailyRoutine[]>(EMPTY_ROUTINES);
   const [nickname, setNickname] = useState('준영');
 
   useEffect(() => {
@@ -89,17 +65,37 @@ export function HomeScreen({
       setRoutines(routineOverride);
       return;
     }
-    getUserRoutines(1)
-      .then(apiRoutines =>
-        setRoutines(addProductToRoutine(apiRoutines, addedRoutineProduct)),
-      )
-      .catch(() => {
-        // 백엔드 연결 전에는 데모 루틴을 보여줍니다.
-        setRoutines(currentRoutines =>
-          addProductToRoutine(currentRoutines, addedRoutineProduct),
-        );
-      });
-  }, [addedRoutineProduct, routineOverride]);
+
+    let isCurrentRequest = true;
+
+    const loadRoutine = async () => {
+      try {
+        const ownedProducts = await getUserCareProducts(1);
+
+        if (!isCurrentRequest) return;
+        if (!ownedProducts.length) {
+          setRoutines(EMPTY_ROUTINES);
+          return;
+        }
+
+        const apiRoutines = await getUserRoutines(1);
+        if (isCurrentRequest) {
+          setRoutines(apiRoutines);
+        }
+      } catch {
+        // 서버에서 루틴을 가져오지 못한 경우에도 임의의 데모 루틴은 표시하지 않습니다.
+        if (isCurrentRequest) {
+          setRoutines(EMPTY_ROUTINES);
+        }
+      }
+    };
+
+    void loadRoutine();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [routineOverride]);
 
   useEffect(() => {
     getUser(1)
@@ -128,21 +124,6 @@ export function HomeScreen({
       </View>
     </SafeAreaView>
   );
-}
-
-function addProductToRoutine(
-  routines: DailyRoutine[],
-  product?: AddedRoutineProduct | null,
-) {
-  if (!product) return routines;
-  return routines.map(day => {
-    const alreadyIncluded = [...day.morning, ...day.evening].some(
-      item => item.id === product.id || item.name === product.name,
-    );
-    return alreadyIncluded
-      ? day
-      : { ...day, evening: [...day.evening, product] };
-  });
 }
 
 function HomeHeader({ nickname }: { nickname: string }) {
@@ -221,6 +202,13 @@ function RoutineSummary({
             isLast={index === routine.length - 1}
           />
         ))}
+        {!routine.length && (
+          <View style={styles.emptyRoutineRow}>
+            <Text style={styles.emptyRoutineText}>
+              보유 제품을 등록하면 맞춤 루틴을 만들어드려요.
+            </Text>
+          </View>
+        )}
         <View style={styles.tipRow}>
           {tab === 'morning' ? (
             <Text style={styles.tipIcon}>☀</Text>
@@ -596,6 +584,14 @@ const styles = StyleSheet.create({
   itemTextWrap: { flex: 1 },
   itemCategory: { fontSize: 8, color: '#7D8780' },
   itemName: { fontSize: 12, color: '#303A32', fontWeight: '800', marginTop: 4 },
+  emptyRoutineRow: {
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#EFF1EE',
+  },
+  emptyRoutineText: { fontSize: 10, color: '#89938B' },
   tipRow: {
     height: 31,
     flexDirection: 'row',

@@ -153,10 +153,10 @@ export function MyPageScreen({
       setIsGeneratingRoutine(true);
       const routines = await generateRoutineFromOwnedProducts(1);
       setGeneratedRoutine(routines);
-    } catch {
+    } catch (error) {
       Alert.alert(
         '루틴을 생성하지 못했어요',
-        '서버 연결을 확인한 뒤 다시 시도해주세요.',
+        error instanceof Error ? error.message : '잠시 후 다시 시도해주세요.',
       );
     } finally {
       setIsGeneratingRoutine(false);
@@ -420,7 +420,7 @@ function OwnedProductCard({
         </Text>
         <Text style={styles.ownedFunction}>
           {product.usedInRoutine
-            ? '현재 루틴에 사용 중인 제품'
+            ? '현재 루틴 사용중인 제품'
             : '아직 루틴에 넣지 않은 제품'}
         </Text>
       </View>
@@ -431,7 +431,7 @@ function OwnedProductCard({
             !product.usedInRoutine && styles.ownedInactiveStatus,
           ]}
         >
-          {product.usedInRoutine ? '루틴 사용 중' : '보유 중'}
+          {product.usedInRoutine ? '루틴 사용중' : '보유 중'}
         </Text>
         <Pressable onPress={onDelete} hitSlop={8}>
           <Text style={{ fontSize: 8, color: '#9A665D' }}>삭제</Text>

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Navigate } from '../navigation/types';
 import { BrandLogo } from '../components/common/BrandLogo';
+import { ProductIllustration } from '../components/common/ProductIllustration';
 import { CareProduct, searchCareProducts } from '../api/careProduct';
 import { getTroubleSolution, questionNewProduct } from '../api/routineConsult';
 import { DailyRoutine } from '../api/routine';
@@ -243,13 +244,17 @@ export function RoutineConsultScreen({
             setProductResult(result);
             setProductResultMessageId(botMessage.id);
           })
-          .catch(() => {
+          .catch((error: unknown) => {
+            const errorMessage =
+              error instanceof Error
+                ? error.message
+                : '잠시 후 다시 시도해주세요.';
             setChatMessages(currentMessages => [
               ...currentMessages,
               {
                 id: userMessage.id + 1,
                 sender: 'bot',
-                text: '제품 적합도를 분석하지 못했어요. 잠시 후 다시 시도해주세요.',
+                text: `제품 적합도를 분석하지 못했어요.\n${errorMessage}`,
               },
             ]);
           })
@@ -297,13 +302,17 @@ export function RoutineConsultScreen({
               response.canSolveNow ? null : response.product,
             );
           })
-          .catch(() => {
+          .catch((error: unknown) => {
+            const errorMessage =
+              error instanceof Error
+                ? error.message
+                : '잠시 후 다시 시도해주세요.';
             setChatMessages(currentMessages => [
               ...currentMessages,
               {
                 id: userMessage.id + 1,
                 sender: 'bot',
-                text: '트러블 해결 루틴을 불러오지 못했어요. 잠시 후 다시 시도해주세요.',
+                text: `트러블 해결 루틴을 불러오지 못했어요.\n${errorMessage}`,
               },
             ]);
           })
@@ -527,23 +536,17 @@ function RecommendedProductCard({
   product: CareProduct;
   onAskProduct: (product: CareProduct) => void;
 }) {
-  const [selected, setSelected] = useState(false);
   const functionName = product.functions?.[0] ?? product.category;
   return (
     <View>
-      <Pressable
-        onPress={() => setSelected(current => !current)}
-        style={[
-          styles.recommendedProductCard,
-          selected && styles.recommendedProductCardSelected,
-        ]}
-      >
+      <View style={styles.recommendedProductCard}>
         <Text style={styles.recommendedLabel}>AI 추천 제품</Text>
         <View style={styles.recommendedProductContent}>
           <View style={styles.recommendedProductImage}>
-            <Text style={styles.recommendedProductImageText}>
-              {product.brand}
-            </Text>
+            <ProductIllustration
+              category={product.category}
+              style={styles.recommendedProductIllustration}
+            />
           </View>
           <View style={styles.recommendedProductInfo}>
             <Text style={styles.recommendedBrand}>{product.brand}</Text>
@@ -558,16 +561,14 @@ function RecommendedProductCard({
             </View>
           </View>
         </View>
+      </View>
+      <Pressable
+        onPress={() => onAskProduct(product)}
+        style={styles.recommendedAskButton}
+      >
+        <Text style={styles.recommendedAskButtonText}>AI에게 물어보기</Text>
+        <Text style={styles.recommendedAskArrow}>›</Text>
       </Pressable>
-      {selected && (
-        <Pressable
-          onPress={() => onAskProduct(product)}
-          style={styles.recommendedAskButton}
-        >
-          <Text style={styles.recommendedAskButtonText}>AI에게 물어보기</Text>
-          <Text style={styles.recommendedAskArrow}>›</Text>
-        </Pressable>
-      )}
     </View>
   );
 }
@@ -608,19 +609,23 @@ function ProductConsultationCard({
     );
   }
 
+  const adjustedRoutine = result.routines
+    ? getAdjustedRoutinePreview(result.routines, result.product.id)
+    : null;
+
   return (
     <View style={styles.suitableCard}>
       <Text style={styles.productResultKicker}>AI 분석 결과 · 추천</Text>
       <Text style={styles.productResultTitle}>오늘 루틴에 추가해볼까요?</Text>
       <Text style={styles.productResultReason}>{result.reason}</Text>
-      <View style={styles.newProductRoutine}>
-        <Text style={styles.newRoutineTitle}>오늘의 조정 루틴</Text>
-        <Text style={styles.newRoutineLine}>
-          PM 약산성 클렌저 → 진정 세럼 →
-        </Text>
-        <Text style={styles.newRoutineProduct}>+ {result.product.name}</Text>
-        <Text style={styles.newRoutineLine}>→ 수분 크림</Text>
-      </View>
+      {adjustedRoutine && (
+        <View style={styles.newProductRoutine}>
+          <Text style={styles.newRoutineTitle}>{adjustedRoutine.label}</Text>
+          <Text style={styles.newRoutineLine}>
+            {adjustedRoutine.products.join(' → ')}
+          </Text>
+        </View>
+      )}
       {result.routines && (
         <Pressable onPress={onApply} style={styles.applyRoutineButton}>
           <Text style={styles.applyRoutineButtonText}>이 루틴 적용하기</Text>
@@ -629,6 +634,38 @@ function ProductConsultationCard({
       )}
     </View>
   );
+}
+
+function getAdjustedRoutinePreview(
+  routines: DailyRoutine[],
+  newProductId: number,
+) {
+  const todayIndex = (new Date().getDay() + 6) % 7;
+  const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
+  const dayOrder = Array.from(
+    { length: routines.length },
+    (_, offset) => (todayIndex + offset) % routines.length,
+  );
+
+  for (const dayIndex of dayOrder) {
+    const day = routines[dayIndex];
+    const timing = day?.morning.some(product => product.id === newProductId)
+      ? 'morning'
+      : day?.evening.some(product => product.id === newProductId)
+        ? 'evening'
+        : null;
+
+    if (timing) {
+      return {
+        label: `${weekdayLabels[dayIndex]}요일 ${
+          timing === 'morning' ? '아침' : '저녁'
+        } 조정 루틴`,
+        products: day[timing].map(product => product.name),
+      };
+    }
+  }
+
+  return null;
 }
 
 function createRoutineChangeRecord(product: CareProduct) {
@@ -1051,12 +1088,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 9,
   },
-  recommendedProductImageText: {
-    fontSize: 6,
-    color: '#758070',
-    textAlign: 'center',
-    paddingHorizontal: 3,
-  },
+  recommendedProductIllustration: { width: 38, height: 48 },
   recommendedProductInfo: { flex: 1, minWidth: 0 },
   recommendedBrand: { fontSize: 8, color: '#7A867A' },
   recommendedName: {
